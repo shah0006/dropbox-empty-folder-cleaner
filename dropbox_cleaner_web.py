@@ -2748,6 +2748,34 @@ HTML_PAGE = '''<!DOCTYPE html>
             }
         }
         
+        // Refresh folder tree after deletions
+        function refreshFolderTree() {
+            console.log('Refreshing folder tree after deletion...');
+            
+            // Clear the cache of loaded folders
+            loadedFolders.clear();
+            
+            // Reset selection to root
+            selectedFolderPath = '';
+            document.getElementById('folderSelect').value = '';
+            document.getElementById('selectedPath').textContent = '/ (Entire Dropbox)';
+            
+            // Remove selected class from all items and select root
+            document.querySelectorAll('.tree-item.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+            const rootItem = document.querySelector('.tree-item.root-item');
+            if (rootItem) {
+                rootItem.classList.add('selected');
+            }
+            
+            // Reload root folders (this collapses everything)
+            loadRootFolders();
+        }
+        
+        // Track if we've already refreshed after last deletion
+        let lastDeleteRefreshed = false;
+        
         async function fetchStatus() {
             try {
                 const response = await fetch('/api/status');
@@ -2901,6 +2929,15 @@ HTML_PAGE = '''<!DOCTYPE html>
                 // Check if deletion just completed
                 if (data.delete_progress.status === 'complete' && !data.deleting) {
                     document.getElementById('progressFill').className = 'progress-bar-fill complete';
+                    
+                    // Refresh folder tree after deletion (only once)
+                    if (!lastDeleteRefreshed) {
+                        lastDeleteRefreshed = true;
+                        refreshFolderTree();
+                    }
+                } else if (data.deleting) {
+                    // Reset flag when new deletion starts
+                    lastDeleteRefreshed = false;
                 }
             }
             
@@ -2944,6 +2981,9 @@ HTML_PAGE = '''<!DOCTYPE html>
         async function startScan() {
             const folder = selectedFolderPath; // Use tree selection
             console.log('startScan called, folder:', folder);
+            
+            // Reset deletion refresh flag for next deletion cycle
+            lastDeleteRefreshed = false;
             
             document.getElementById('resultsCard').style.display = 'none';
             document.getElementById('emptyStatCard').style.display = 'none';
