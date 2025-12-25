@@ -2719,6 +2719,8 @@ HTML_PAGE = '''<!DOCTYPE html>
     </div>
     
     <script>
+        console.log('=== SCRIPT STARTING ===');
+        
         let pollInterval = null;
         let emptyFolders = [];
         let selectedFolderPath = '';
@@ -2834,11 +2836,19 @@ HTML_PAGE = '''<!DOCTYPE html>
         }
         
         async function loadRootFolders() {
+            console.log('loadRootFolders() called');
             const container = document.getElementById('rootFolders');
+            if (!container) {
+                console.error('rootFolders container not found!');
+                return;
+            }
             
             try {
+                console.log('Fetching /api/subfolders?path=');
                 const response = await fetch('/api/subfolders?path=');
+                console.log('Response status:', response.status);
                 const data = await response.json();
+                console.log('Received', data.subfolders ? data.subfolders.length : 0, 'folders');
                 
                 if (data.subfolders && data.subfolders.length > 0) {
                     container.innerHTML = data.subfolders.map(folder => {
@@ -2853,12 +2863,14 @@ HTML_PAGE = '''<!DOCTYPE html>
                             <div class="tree-children collapsed"></div>
                         </div>
                     `}).join('');
+                    console.log('Folder tree HTML updated');
                 } else {
                     container.innerHTML = '<div class="tree-empty">No folders found</div>';
+                    console.log('No subfolders returned');
                 }
             } catch (e) {
                 console.error('Failed to load root folders:', e);
-                container.innerHTML = '<div class="tree-empty">Error loading folders</div>';
+                container.innerHTML = '<div class="tree-empty">Error loading folders: ' + e.message + '</div>';
             }
         }
         
@@ -2950,15 +2962,18 @@ HTML_PAGE = '''<!DOCTYPE html>
         let lastScanRefreshed = false;
         
         async function fetchStatus() {
+            console.log('fetchStatus() running...');
             try {
                 const response = await fetch('/api/status');
+                console.log('Got response:', response.status);
                 if (!response.ok) {
                     console.error('Status response not OK:', response.status);
                     return;
                 }
                 const data = await response.json();
-                console.log('Status update - connected:', data.connected);
-                updateUI(data);
+                console.log('Status data - connected:', data.connected);
+                await updateUI(data);
+                console.log('updateUI() completed');
             } catch (e) {
                 console.error('Failed to fetch status:', e);
             }
@@ -2983,7 +2998,7 @@ HTML_PAGE = '''<!DOCTYPE html>
             }
         }
         
-        function updateUI(data) {
+        async function updateUI(data) {
             // Connection status
             const statusEl = document.getElementById('connectionStatus');
             const accountEl = document.getElementById('accountInfo');
@@ -3850,11 +3865,23 @@ HTML_PAGE = '''<!DOCTYPE html>
         });
         
         // Start polling
-        fetchStatus();
+        console.log('=== STARTING INITIALIZATION ===');
+        try {
+            fetchStatus();
+            console.log('fetchStatus() called successfully');
+        } catch(e) {
+            console.error('Error calling fetchStatus:', e);
+        }
         pollInterval = setInterval(fetchStatus, 400);
+        console.log('Poll interval set');
         
         // Load folder tree
-        loadRootFolders();
+        console.log('Initializing - calling loadRootFolders...');
+        loadRootFolders().then(() => {
+            console.log('Root folders loaded successfully');
+        }).catch(e => {
+            console.error('Failed to load root folders on init:', e);
+        });
         
         // Check if setup is needed
         checkSetupNeeded();
@@ -4562,7 +4589,7 @@ def main():
         print("\nRun 'python3 dropbox_auth.py' to set up authentication.")
         sys.exit(1)
     
-    port = 8765
+    port = app_state["config"].get("port", 8765)
     
     try:
         server = HTTPServer(('127.0.0.1', port), DropboxHandler)
