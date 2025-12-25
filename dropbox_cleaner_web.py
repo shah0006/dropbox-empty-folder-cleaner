@@ -2896,22 +2896,29 @@ HTML_PAGE = '''<!DOCTYPE html>
         
         // Re-expand folders to given paths
         async function expandToPaths(paths) {
+            console.log('expandToPaths called with:', paths);
             for (const path of paths) {
                 if (path === '') {
                     // Root is always expanded, skip
                     continue;
                 }
                 
-                // Find the tree item with this path
-                const treeItem = document.querySelector(`.tree-item[data-path="${CSS.escape(path)}"]`);
+                // Find the tree item with this path using attribute selector with escaped quotes
+                const escapedPath = path.replace(/"/g, '\\"');
+                const treeItem = document.querySelector('.tree-item[data-path="' + escapedPath + '"]');
+                console.log('Looking for path:', path, '- Found:', !!treeItem);
+                
                 if (treeItem) {
                     const wrapper = treeItem.closest('.tree-item-wrapper');
                     const childrenContainer = wrapper ? wrapper.querySelector('.tree-children') : null;
                     
                     if (childrenContainer && childrenContainer.classList.contains('collapsed')) {
                         // Expand this folder
+                        console.log('Expanding:', path);
                         await toggleFolderExpand(treeItem, path);
                     }
+                } else {
+                    console.log('Could not find tree item for path:', path);
                 }
             }
         }
@@ -2939,7 +2946,8 @@ HTML_PAGE = '''<!DOCTYPE html>
             
             // Try to re-select the previously selected folder
             if (previousSelection) {
-                const prevItem = document.querySelector(`.tree-item[data-path="${CSS.escape(previousSelection)}"]`);
+                const escapedSelection = previousSelection.replace(/"/g, '\\"');
+                const prevItem = document.querySelector('.tree-item[data-path="' + escapedSelection + '"]');
                 if (prevItem) {
                     selectFolder(prevItem, previousSelection);
                     console.log('Re-selected folder:', previousSelection);
@@ -2957,9 +2965,8 @@ HTML_PAGE = '''<!DOCTYPE html>
             }
         }
         
-        // Track if we've already refreshed after last deletion/scan
+        // Track if we've already refreshed after last deletion
         let lastDeleteRefreshed = false;
-        let lastScanRefreshed = false;
         
         async function fetchStatus() {
             console.log('fetchStatus() running...');
@@ -3109,13 +3116,8 @@ HTML_PAGE = '''<!DOCTYPE html>
                     animateValue('elapsedTime', formatTime(data.scan_progress.elapsed || 0));
                     animateValue('itemRate', formatNumber(data.scan_progress.rate || 0));
                     
-                    // Refresh folder tree after scan (only once)
-                    if (!lastScanRefreshed) {
-                        lastScanRefreshed = true;
-                        console.log('Scan complete - triggering folder tree refresh');
-                        await refreshFolderTree();
-                        console.log('Folder tree refresh complete');
-                    }
+                    // Note: No need to refresh folder tree after scan - it only reads, doesn't modify
+                    // Tree refresh only needed after deletion
                     
                     // Show empty count stat
                     emptyStatCard.style.display = 'block';
@@ -3180,9 +3182,8 @@ HTML_PAGE = '''<!DOCTYPE html>
             const folder = selectedFolderPath; // Use tree selection
             console.log('startScan called, folder:', folder);
             
-            // Reset refresh flags for next cycle
+            // Reset refresh flag for next deletion cycle
             lastDeleteRefreshed = false;
-            lastScanRefreshed = false;
             
             document.getElementById('resultsCard').style.display = 'none';
             document.getElementById('emptyStatCard').style.display = 'none';
