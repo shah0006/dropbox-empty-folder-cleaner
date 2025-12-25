@@ -1103,6 +1103,88 @@ HTML_PAGE = '''<!DOCTYPE html>
             border-color: var(--accent-cyan);
         }
         
+        .settings-input-full {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 0.85em;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+        }
+        
+        .settings-input-full:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+        
+        .btn-tiny {
+            padding: 4px 8px;
+            font-size: 0.75em;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        
+        .btn-tiny:hover {
+            color: var(--accent-cyan);
+        }
+        
+        .settings-list-container {
+            position: relative;
+        }
+        
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 0.85em;
+        }
+        
+        .status-indicator {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
+        .status-indicator.connected {
+            background: var(--accent-green);
+            box-shadow: 0 0 8px var(--accent-green);
+        }
+        
+        .status-indicator.disconnected {
+            background: var(--accent-red);
+            box-shadow: 0 0 8px var(--accent-red);
+        }
+        
+        .settings-section details summary {
+            font-size: 0.85em;
+        }
+        
+        .settings-section details ol {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        
+        .settings-section details code {
+            background: rgba(0, 212, 255, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            color: var(--accent-cyan);
+        }
+        
         /* Statistics Panel */
         .stats-panel {
             background: rgba(0, 0, 0, 0.2);
@@ -1351,6 +1433,56 @@ HTML_PAGE = '''<!DOCTYPE html>
             <h2>Settings</h2>
             
             <div class="settings-section">
+                <h3>🔐 Dropbox Connection</h3>
+                <p class="settings-desc">Configure your Dropbox API credentials. <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color: var(--accent-cyan);">Create a Dropbox App</a></p>
+                
+                <div class="connection-status" id="settingsConnectionStatus">
+                    <span class="status-indicator connected"></span>
+                    <span id="settingsAccountInfo">Connected</span>
+                </div>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">App Key:</label>
+                    <input type="text" id="settingsAppKey" class="settings-input-full" placeholder="Your Dropbox App Key">
+                </div>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">App Secret:</label>
+                    <input type="password" id="settingsAppSecret" class="settings-input-full" placeholder="Your Dropbox App Secret">
+                    <button class="btn-tiny" onclick="togglePassword('settingsAppSecret')" title="Show/Hide">👁️</button>
+                </div>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">Refresh Token:</label>
+                    <input type="password" id="settingsRefreshToken" class="settings-input-full" placeholder="Your Dropbox Refresh Token">
+                    <button class="btn-tiny" onclick="togglePassword('settingsRefreshToken')" title="Show/Hide">👁️</button>
+                </div>
+                
+                <div class="btn-group" style="margin-top: 10px;">
+                    <button class="btn-small" onclick="startAuth()">🔑 Get New Token</button>
+                    <button class="btn-small" onclick="testConnection()">🔄 Test Connection</button>
+                </div>
+                
+                <div class="settings-hint" style="margin-top: 8px;">
+                    <details>
+                        <summary style="cursor: pointer; color: var(--accent-cyan);">📖 How to set up Dropbox API</summary>
+                        <ol style="margin-top: 8px; padding-left: 20px; line-height: 1.8;">
+                            <li>Go to <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color: var(--accent-cyan);">Dropbox App Console</a></li>
+                            <li>Click "Create app"</li>
+                            <li>Select "Scoped access" → "Full Dropbox"</li>
+                            <li>Name your app (e.g., "My Folder Cleaner")</li>
+                            <li>Go to Permissions tab, enable:<br>
+                                • <code>files.metadata.read</code><br>
+                                • <code>files.content.write</code></li>
+                            <li>Click "Submit" to save permissions</li>
+                            <li>Copy App Key and App Secret here</li>
+                            <li>Click "Get New Token" to authorize</li>
+                        </ol>
+                    </details>
+                </div>
+            </div>
+            
+            <div class="settings-section">
                 <h3>🗂️ System File Handling</h3>
                 <p class="settings-desc">Folders containing only these files will be considered empty.</p>
                 
@@ -1396,6 +1528,28 @@ HTML_PAGE = '''<!DOCTYPE html>
                 <button class="btn btn-secondary" onclick="resetSettings()">↺ Reset to Defaults</button>
                 <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
                 <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Auth Modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal">
+            <div class="modal-icon">🔑</div>
+            <h2>Authorize Dropbox</h2>
+            <div id="authStep1">
+                <p>Click the button below to open Dropbox authorization. After authorizing, copy the code and paste it below.</p>
+                <div class="btn-group" style="margin: 20px 0;">
+                    <button class="btn btn-primary" onclick="openAuthUrl()">🔗 Open Dropbox Authorization</button>
+                </div>
+                <div class="settings-list-container">
+                    <label class="settings-label">Paste authorization code here:</label>
+                    <input type="text" id="authCode" class="settings-input-full" placeholder="Paste the code from Dropbox">
+                </div>
+                <div class="btn-group" style="margin-top: 16px;">
+                    <button class="btn btn-secondary" onclick="closeAuth()">Cancel</button>
+                    <button class="btn btn-primary" onclick="exchangeCode()">✓ Complete Authorization</button>
+                </div>
             </div>
         </div>
     </div>
@@ -1825,6 +1979,161 @@ HTML_PAGE = '''<!DOCTYPE html>
             }, 3000);
         }
         
+        function togglePassword(inputId) {
+            const input = document.getElementById(inputId);
+            input.type = input.type === 'password' ? 'text' : 'password';
+        }
+        
+        async function loadCredentials() {
+            try {
+                const response = await fetch('/api/credentials');
+                const data = await response.json();
+                document.getElementById('settingsAppKey').value = data.app_key || '';
+                document.getElementById('settingsAppSecret').value = data.app_secret || '';
+                document.getElementById('settingsRefreshToken').value = data.refresh_token || '';
+                
+                // Update connection status in settings
+                const statusEl = document.getElementById('settingsConnectionStatus');
+                const indicator = statusEl.querySelector('.status-indicator');
+                const info = document.getElementById('settingsAccountInfo');
+                
+                if (data.connected) {
+                    indicator.className = 'status-indicator connected';
+                    info.textContent = `Connected as ${data.account_name}`;
+                } else {
+                    indicator.className = 'status-indicator disconnected';
+                    info.textContent = 'Not connected';
+                }
+            } catch (e) {
+                console.error('Failed to load credentials:', e);
+            }
+        }
+        
+        function startAuth() {
+            const appKey = document.getElementById('settingsAppKey').value.trim();
+            const appSecret = document.getElementById('settingsAppSecret').value.trim();
+            
+            if (!appKey || !appSecret) {
+                showToast('Please enter App Key and App Secret first', 'error');
+                return;
+            }
+            
+            document.getElementById('authModal').classList.add('active');
+        }
+        
+        function closeAuth() {
+            document.getElementById('authModal').classList.remove('active');
+            document.getElementById('authCode').value = '';
+        }
+        
+        function openAuthUrl() {
+            const appKey = document.getElementById('settingsAppKey').value.trim();
+            const authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&response_type=code&token_access_type=offline`;
+            window.open(authUrl, '_blank');
+        }
+        
+        async function exchangeCode() {
+            const appKey = document.getElementById('settingsAppKey').value.trim();
+            const appSecret = document.getElementById('settingsAppSecret').value.trim();
+            const code = document.getElementById('authCode').value.trim();
+            
+            if (!code) {
+                showToast('Please enter the authorization code', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/auth/exchange', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({app_key: appKey, app_secret: appSecret, code: code})
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('settingsRefreshToken').value = data.refresh_token;
+                    closeAuth();
+                    showToast('Authorization successful! Click Save Settings to apply.', 'success');
+                } else {
+                    showToast(`Authorization failed: ${data.error}`, 'error');
+                }
+            } catch (e) {
+                console.error('Exchange failed:', e);
+                showToast('Authorization failed. Check console for details.', 'error');
+            }
+        }
+        
+        async function testConnection() {
+            const appKey = document.getElementById('settingsAppKey').value.trim();
+            const appSecret = document.getElementById('settingsAppSecret').value.trim();
+            const refreshToken = document.getElementById('settingsRefreshToken').value.trim();
+            
+            if (!appKey || !appSecret || !refreshToken) {
+                showToast('Please enter all credentials first', 'error');
+                return;
+            }
+            
+            showToast('Testing connection...', 'info');
+            
+            try {
+                const response = await fetch('/api/auth/test', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({app_key: appKey, app_secret: appSecret, refresh_token: refreshToken})
+                });
+                
+                const data = await response.json();
+                
+                const indicator = document.querySelector('#settingsConnectionStatus .status-indicator');
+                const info = document.getElementById('settingsAccountInfo');
+                
+                if (data.success) {
+                    indicator.className = 'status-indicator connected';
+                    info.textContent = `Connected as ${data.account_name}`;
+                    showToast(`Connected as ${data.account_name}!`, 'success');
+                } else {
+                    indicator.className = 'status-indicator disconnected';
+                    info.textContent = 'Connection failed';
+                    showToast(`Connection failed: ${data.error}`, 'error');
+                }
+            } catch (e) {
+                console.error('Test failed:', e);
+                showToast('Connection test failed', 'error');
+            }
+        }
+        
+        // Override showSettings to also load credentials
+        const originalShowSettings = showSettings;
+        showSettings = async function() {
+            await loadCredentials();
+            originalShowSettings();
+        };
+        
+        // Override saveSettings to also save credentials
+        const originalSaveSettings = saveSettings;
+        saveSettings = async function() {
+            // Save credentials
+            const credentials = {
+                app_key: document.getElementById('settingsAppKey').value.trim(),
+                app_secret: document.getElementById('settingsAppSecret').value.trim(),
+                refresh_token: document.getElementById('settingsRefreshToken').value.trim()
+            };
+            
+            try {
+                await fetch('/api/credentials', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(credentials)
+                });
+            } catch (e) {
+                console.error('Failed to save credentials:', e);
+            }
+            
+            // Call original save
+            await originalSaveSettings();
+        };
+        
         // Start polling
         fetchStatus();
         pollInterval = setInterval(fetchStatus, 400);
@@ -1876,6 +2185,16 @@ class DropboxHandler(BaseHTTPRequestHandler):
             })
         elif self.path == '/api/config':
             self.send_json(app_state["config"])
+        elif self.path == '/api/credentials':
+            # Return credentials (masked for security)
+            load_dotenv()
+            self.send_json({
+                "app_key": os.getenv("DROPBOX_APP_KEY", ""),
+                "app_secret": os.getenv("DROPBOX_APP_SECRET", ""),
+                "refresh_token": os.getenv("DROPBOX_REFRESH_TOKEN", ""),
+                "connected": app_state["connected"],
+                "account_name": app_state["account_name"]
+            })
         elif self.path.startswith('/api/export'):
             self.handle_export()
         else:
@@ -1951,10 +2270,136 @@ class DropboxHandler(BaseHTTPRequestHandler):
             app_state["config"].update(data)
             save_config(app_state["config"])
             self.send_json({"status": "ok", "config": app_state["config"]})
+        elif self.path == '/api/credentials':
+            # Save credentials to .env file
+            logger.info("API request: Update credentials")
+            save_credentials(data)
+            # Reconnect with new credentials
+            if connect_dropbox():
+                self.send_json({"status": "ok", "connected": True})
+            else:
+                self.send_json({"status": "ok", "connected": False})
+        elif self.path == '/api/auth/exchange':
+            # Exchange authorization code for refresh token
+            logger.info("API request: Exchange auth code")
+            result = exchange_auth_code(data)
+            self.send_json(result)
+        elif self.path == '/api/auth/test':
+            # Test connection with provided credentials
+            logger.info("API request: Test connection")
+            result = test_credentials(data)
+            self.send_json(result)
         else:
             logger.warning(f"Unknown API endpoint: {self.path}")
             self.send_response(404)
             self.end_headers()
+
+
+def save_credentials(creds):
+    """Save credentials to .env file."""
+    env_path = os.path.join(os.path.dirname(__file__), '.env')
+    
+    # Read existing .env content
+    existing = {}
+    if os.path.exists(env_path):
+        with open(env_path, 'r') as f:
+            for line in f:
+                line = line.strip()
+                if '=' in line and not line.startswith('#'):
+                    key, value = line.split('=', 1)
+                    existing[key] = value
+    
+    # Update with new credentials
+    if creds.get('app_key'):
+        existing['DROPBOX_APP_KEY'] = f'"{creds["app_key"]}"'
+    if creds.get('app_secret'):
+        existing['DROPBOX_APP_SECRET'] = f'"{creds["app_secret"]}"'
+    if creds.get('refresh_token'):
+        existing['DROPBOX_REFRESH_TOKEN'] = f'"{creds["refresh_token"]}"'
+    
+    # Write back
+    with open(env_path, 'w') as f:
+        for key, value in existing.items():
+            f.write(f'{key}={value}\n')
+    
+    logger.info("Credentials saved to .env file")
+    
+    # Reload environment
+    load_dotenv(override=True)
+
+
+def exchange_auth_code(data):
+    """Exchange authorization code for refresh token."""
+    import urllib.request
+    import urllib.parse
+    
+    app_key = data.get('app_key', '')
+    app_secret = data.get('app_secret', '')
+    code = data.get('code', '')
+    
+    if not all([app_key, app_secret, code]):
+        return {"success": False, "error": "Missing credentials or code"}
+    
+    try:
+        # Exchange code for token
+        token_url = "https://api.dropboxapi.com/oauth2/token"
+        post_data = urllib.parse.urlencode({
+            'code': code,
+            'grant_type': 'authorization_code'
+        }).encode()
+        
+        # Create request with basic auth
+        import base64
+        auth_header = base64.b64encode(f"{app_key}:{app_secret}".encode()).decode()
+        
+        req = urllib.request.Request(token_url, data=post_data)
+        req.add_header('Authorization', f'Basic {auth_header}')
+        req.add_header('Content-Type', 'application/x-www-form-urlencoded')
+        
+        with urllib.request.urlopen(req) as response:
+            result = json.loads(response.read().decode())
+            refresh_token = result.get('refresh_token')
+            
+            if refresh_token:
+                logger.info("Successfully exchanged auth code for refresh token")
+                return {"success": True, "refresh_token": refresh_token}
+            else:
+                return {"success": False, "error": "No refresh token in response"}
+                
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode()
+        logger.error(f"Token exchange failed: {e.code} - {error_body}")
+        return {"success": False, "error": f"HTTP {e.code}: {error_body}"}
+    except Exception as e:
+        logger.error(f"Token exchange failed: {e}")
+        return {"success": False, "error": str(e)}
+
+
+def test_credentials(data):
+    """Test Dropbox credentials."""
+    app_key = data.get('app_key', '')
+    app_secret = data.get('app_secret', '')
+    refresh_token = data.get('refresh_token', '')
+    
+    if not all([app_key, app_secret, refresh_token]):
+        return {"success": False, "error": "Missing credentials"}
+    
+    try:
+        dbx = dropbox.Dropbox(
+            oauth2_refresh_token=refresh_token,
+            app_key=app_key,
+            app_secret=app_secret
+        )
+        account = dbx.users_get_current_account()
+        logger.info(f"Test connection successful: {account.name.display_name}")
+        return {
+            "success": True,
+            "account_name": account.name.display_name,
+            "email": account.email
+        }
+    except Exception as e:
+        logger.error(f"Test connection failed: {e}")
+        return {"success": False, "error": str(e)}
 
 
 def connect_dropbox():

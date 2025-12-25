@@ -76,15 +76,28 @@ pip install -r requirements.txt
    - `files.content.write`
 6. Click **Submit** to save permissions
 
-### 3. Authorize the App
+### 3. Run the Application
 
+```bash
+python3 dropbox_cleaner_web.py
+```
+
+### 4. Configure Dropbox Connection (First-Time Setup)
+
+1. Click the **⚙️ Settings** button in the app
+2. In the **Dropbox Connection** section:
+   - Enter your **App Key** and **App Secret**
+   - Click **"Get New Token"** to authorize
+   - A new window opens - authorize and copy the code
+   - Paste the code and click **"Complete Authorization"**
+3. Click **"Save Settings"**
+
+**Alternative: Command-Line Setup**
 ```bash
 python3 dropbox_auth.py
 ```
 
-This opens your browser to authorize the app and saves a long-term refresh token.
-
-### 4. Run the Application
+### 5. Start Using the App
 
 **Web GUI (Recommended):**
 ```bash
