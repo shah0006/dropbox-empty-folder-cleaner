@@ -1249,6 +1249,259 @@ HTML_PAGE = '''<!DOCTYPE html>
             color: white;
         }
         
+        /* Setup Wizard */
+        .wizard-modal {
+            max-width: 580px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .wizard-header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .wizard-icon {
+            font-size: 3em;
+            margin-bottom: 12px;
+        }
+        
+        .wizard-modal h2 {
+            color: var(--accent-cyan);
+            margin-bottom: 8px;
+        }
+        
+        .wizard-subtitle {
+            color: var(--text-secondary);
+            font-size: 0.9em;
+        }
+        
+        .wizard-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 28px;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+        }
+        
+        .wizard-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            opacity: 0.4;
+            transition: all 0.3s ease;
+        }
+        
+        .wizard-step.active {
+            opacity: 1;
+        }
+        
+        .wizard-step.completed {
+            opacity: 1;
+        }
+        
+        .wizard-step.completed .step-number {
+            background: var(--accent-green);
+            border-color: var(--accent-green);
+        }
+        
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--accent-cyan);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.85em;
+            transition: all 0.3s ease;
+        }
+        
+        .wizard-step.active .step-number {
+            background: var(--accent-cyan);
+            color: white;
+        }
+        
+        .step-label {
+            font-size: 0.7em;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        
+        .wizard-step-line {
+            width: 30px;
+            height: 2px;
+            background: var(--border-color);
+            margin-bottom: 20px;
+        }
+        
+        .wizard-content {
+            animation: fadeIn 0.3s ease;
+        }
+        
+        .wizard-content h3 {
+            color: var(--accent-purple);
+            font-size: 1.1em;
+            margin-bottom: 16px;
+        }
+        
+        .wizard-instructions {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .wizard-instructions p {
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-align: left;
+        }
+        
+        .wizard-instructions ol {
+            color: var(--text-secondary);
+            padding-left: 24px;
+            margin: 12px 0;
+        }
+        
+        .wizard-instructions li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+        
+        .wizard-action {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .wizard-action a.btn {
+            text-decoration: none;
+            display: inline-flex;
+        }
+        
+        .wizard-note {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+            font-size: 0.85em;
+            color: var(--accent-cyan);
+        }
+        
+        .wizard-warning {
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 16px;
+            font-size: 0.85em;
+            color: var(--accent-orange);
+        }
+        
+        .wizard-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .permission-boxes {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin: 16px 0;
+        }
+        
+        .permission-box {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
+        }
+        
+        .permission-check {
+            font-size: 1.2em;
+        }
+        
+        .permission-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        .permission-info code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9em;
+            color: var(--accent-green);
+        }
+        
+        .permission-info span {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+        }
+        
+        .wizard-inputs {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin: 16px 0;
+        }
+        
+        .wizard-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .wizard-input-group label {
+            color: var(--text-primary);
+            font-size: 0.9em;
+            font-weight: 500;
+        }
+        
+        .input-hint {
+            font-size: 0.75em;
+            color: var(--text-secondary);
+        }
+        
+        .wizard-success {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .wizard-success .success-icon {
+            font-size: 4em;
+            margin-bottom: 16px;
+            animation: successBounce 0.5s ease;
+        }
+        
+        .wizard-success h3 {
+            color: var(--accent-green) !important;
+            font-size: 1.5em !important;
+            margin-bottom: 12px !important;
+        }
+        
+        .success-account {
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(34, 197, 94, 0.1);
+            padding: 8px 16px;
+            border-radius: 8px;
+            display: inline-block;
+            margin-bottom: 16px;
+            color: var(--accent-green);
+        }
+        
         /* Footer - Compact */
         footer {
             text-align: center;
@@ -1292,6 +1545,14 @@ HTML_PAGE = '''<!DOCTYPE html>
                 </span>
             </div>
             <p id="accountInfo" style="color: var(--text-secondary);"></p>
+            <div id="setupPrompt" style="display: none; margin-top: 12px;">
+                <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                    Connect your Dropbox account to get started:
+                </p>
+                <button class="btn btn-primary" onclick="showSetupWizard()">
+                    🚀 Set Up Dropbox Connection
+                </button>
+            </div>
         </div>
         
         <div class="card">
@@ -1554,6 +1815,180 @@ HTML_PAGE = '''<!DOCTYPE html>
         </div>
     </div>
     
+    <!-- Setup Wizard Modal -->
+    <div class="modal-overlay" id="setupWizard">
+        <div class="modal wizard-modal">
+            <div class="wizard-header">
+                <div class="wizard-icon">🚀</div>
+                <h2>Welcome! Let's Get Started</h2>
+                <p class="wizard-subtitle">Follow these steps to connect your Dropbox account</p>
+            </div>
+            
+            <div class="wizard-progress">
+                <div class="wizard-step" id="wizStep1Indicator">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Create App</div>
+                </div>
+                <div class="wizard-step-line"></div>
+                <div class="wizard-step" id="wizStep2Indicator">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Permissions</div>
+                </div>
+                <div class="wizard-step-line"></div>
+                <div class="wizard-step" id="wizStep3Indicator">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Credentials</div>
+                </div>
+                <div class="wizard-step-line"></div>
+                <div class="wizard-step" id="wizStep4Indicator">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Authorize</div>
+                </div>
+            </div>
+            
+            <!-- Step 1: Create Dropbox App -->
+            <div class="wizard-content" id="wizStep1">
+                <h3>Step 1: Create a Dropbox App</h3>
+                <div class="wizard-instructions">
+                    <p>First, you need to create a free Dropbox developer app:</p>
+                    <ol>
+                        <li>Click the button below to open the Dropbox App Console</li>
+                        <li>Sign in to your Dropbox account if prompted</li>
+                        <li>Click <strong>"Create app"</strong></li>
+                        <li>Select <strong>"Scoped access"</strong></li>
+                        <li>Select <strong>"Full Dropbox"</strong> for access type</li>
+                        <li>Enter a name for your app (e.g., "My Folder Cleaner")</li>
+                        <li>Click <strong>"Create app"</strong></li>
+                    </ol>
+                    <div class="wizard-action">
+                        <a href="https://www.dropbox.com/developers/apps/create" target="_blank" class="btn btn-primary">
+                            🔗 Open Dropbox App Console
+                        </a>
+                    </div>
+                    <div class="wizard-note">
+                        <strong>💡 Tip:</strong> Keep the Dropbox page open - you'll need information from it in the next steps.
+                    </div>
+                </div>
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" onclick="closeWizard()">Cancel</button>
+                    <button class="btn btn-primary" onclick="wizardNext(2)">I've Created My App →</button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Set Permissions -->
+            <div class="wizard-content" id="wizStep2" style="display: none;">
+                <h3>Step 2: Set App Permissions</h3>
+                <div class="wizard-instructions">
+                    <p>Now configure the permissions your app needs:</p>
+                    <ol>
+                        <li>In your new app's page, click the <strong>"Permissions"</strong> tab</li>
+                        <li>Find and <strong>check these two permissions</strong>:</li>
+                    </ol>
+                    <div class="permission-boxes">
+                        <div class="permission-box">
+                            <div class="permission-check">☑️</div>
+                            <div class="permission-info">
+                                <code>files.metadata.read</code>
+                                <span>Read file and folder information</span>
+                            </div>
+                        </div>
+                        <div class="permission-box">
+                            <div class="permission-check">☑️</div>
+                            <div class="permission-info">
+                                <code>files.content.write</code>
+                                <span>Delete files and folders</span>
+                            </div>
+                        </div>
+                    </div>
+                    <ol start="3">
+                        <li>Scroll down and click <strong>"Submit"</strong> to save the permissions</li>
+                    </ol>
+                    <div class="wizard-warning">
+                        ⚠️ <strong>Important:</strong> You must enable BOTH permissions and click Submit, or the app won't work!
+                    </div>
+                </div>
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" onclick="wizardBack(1)">← Back</button>
+                    <button class="btn btn-primary" onclick="wizardNext(3)">Permissions Set →</button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Enter Credentials -->
+            <div class="wizard-content" id="wizStep3" style="display: none;">
+                <h3>Step 3: Enter Your App Credentials</h3>
+                <div class="wizard-instructions">
+                    <p>Now copy your app's credentials from Dropbox:</p>
+                    <ol>
+                        <li>Go back to the <strong>"Settings"</strong> tab of your Dropbox app</li>
+                        <li>Find and copy your <strong>App key</strong> and <strong>App secret</strong></li>
+                        <li>Paste them in the fields below:</li>
+                    </ol>
+                    <div class="wizard-inputs">
+                        <div class="wizard-input-group">
+                            <label>App Key:</label>
+                            <input type="text" id="wizardAppKey" class="settings-input-full" placeholder="e.g., abc123xyz789">
+                            <span class="input-hint">Found in your app's Settings tab</span>
+                        </div>
+                        <div class="wizard-input-group">
+                            <label>App Secret:</label>
+                            <div style="position: relative;">
+                                <input type="password" id="wizardAppSecret" class="settings-input-full" placeholder="e.g., xyz789abc123secret">
+                                <button class="btn-tiny" onclick="togglePassword('wizardAppSecret')" style="top: 12px;">👁️</button>
+                            </div>
+                            <span class="input-hint">Click "Show" next to App secret in Dropbox to reveal it</span>
+                        </div>
+                    </div>
+                    <div class="wizard-note">
+                        <strong>🔐 Security:</strong> Your credentials are stored only on your computer in a local .env file.
+                    </div>
+                </div>
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" onclick="wizardBack(2)">← Back</button>
+                    <button class="btn btn-primary" onclick="wizardValidateAndNext()">Continue →</button>
+                </div>
+            </div>
+            
+            <!-- Step 4: Authorize -->
+            <div class="wizard-content" id="wizStep4" style="display: none;">
+                <h3>Step 4: Authorize the Connection</h3>
+                <div class="wizard-instructions">
+                    <p>Final step - authorize this app to access your Dropbox:</p>
+                    <ol>
+                        <li>Click the button below to open Dropbox authorization</li>
+                        <li>Click <strong>"Allow"</strong> to grant access</li>
+                        <li>Dropbox will show you an <strong>authorization code</strong></li>
+                        <li>Copy that code and paste it below</li>
+                    </ol>
+                    <div class="wizard-action">
+                        <button class="btn btn-primary" onclick="wizardOpenAuth()">🔗 Authorize with Dropbox</button>
+                    </div>
+                    <div class="wizard-input-group" style="margin-top: 20px;">
+                        <label>Authorization Code:</label>
+                        <input type="text" id="wizardAuthCode" class="settings-input-full" placeholder="Paste the code from Dropbox here">
+                        <span class="input-hint">Copy the entire code shown by Dropbox after clicking "Allow"</span>
+                    </div>
+                </div>
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" onclick="wizardBack(3)">← Back</button>
+                    <button class="btn btn-primary" onclick="wizardComplete()">✓ Complete Setup</button>
+                </div>
+            </div>
+            
+            <!-- Success -->
+            <div class="wizard-content" id="wizStepSuccess" style="display: none;">
+                <div class="wizard-success">
+                    <div class="success-icon">🎉</div>
+                    <h3>Setup Complete!</h3>
+                    <p class="success-account" id="wizardSuccessAccount">Connected as: Loading...</p>
+                    <p>You're all set! You can now scan your Dropbox for empty folders.</p>
+                    <div class="wizard-action">
+                        <button class="btn btn-primary" onclick="closeWizard()">Start Using the App</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <!-- Help Modal -->
     <div class="modal-overlay" id="helpModal">
         <div class="modal help-modal">
@@ -1721,14 +2156,18 @@ HTML_PAGE = '''<!DOCTYPE html>
             // Connection status
             const statusEl = document.getElementById('connectionStatus');
             const accountEl = document.getElementById('accountInfo');
+            const setupPrompt = document.getElementById('setupPrompt');
             
             if (data.connected) {
                 statusEl.className = 'status-badge status-connected';
                 statusEl.innerHTML = '<span class="status-dot"></span> Connected';
                 accountEl.textContent = `Logged in as ${data.account_name} (${data.account_email})`;
+                setupPrompt.style.display = 'none';
             } else {
                 statusEl.className = 'status-badge status-disconnected';
-                statusEl.innerHTML = '<span class="status-dot"></span> Disconnected';
+                statusEl.innerHTML = '<span class="status-dot"></span> Not Connected';
+                accountEl.textContent = '';
+                setupPrompt.style.display = 'block';
             }
             
             // Folders dropdown
@@ -2202,9 +2641,190 @@ HTML_PAGE = '''<!DOCTYPE html>
             await originalSaveSettings();
         };
         
+        // Setup Wizard Functions
+        let currentWizardStep = 1;
+        
+        function showSetupWizard() {
+            currentWizardStep = 1;
+            updateWizardStep(1);
+            document.getElementById('setupWizard').classList.add('active');
+        }
+        
+        function closeWizard() {
+            document.getElementById('setupWizard').classList.remove('active');
+            // Refresh the page to update connection status
+            location.reload();
+        }
+        
+        function updateWizardStep(step) {
+            // Hide all content
+            for (let i = 1; i <= 4; i++) {
+                const content = document.getElementById(`wizStep${i}`);
+                const indicator = document.getElementById(`wizStep${i}Indicator`);
+                if (content) content.style.display = 'none';
+                if (indicator) {
+                    indicator.classList.remove('active', 'completed');
+                    if (i < step) indicator.classList.add('completed');
+                    if (i === step) indicator.classList.add('active');
+                }
+            }
+            document.getElementById('wizStepSuccess').style.display = 'none';
+            
+            // Show current step
+            const currentContent = document.getElementById(`wizStep${step}`);
+            if (currentContent) currentContent.style.display = 'block';
+            
+            currentWizardStep = step;
+        }
+        
+        function wizardNext(step) {
+            updateWizardStep(step);
+        }
+        
+        function wizardBack(step) {
+            updateWizardStep(step);
+        }
+        
+        function wizardValidateAndNext() {
+            const appKey = document.getElementById('wizardAppKey').value.trim();
+            const appSecret = document.getElementById('wizardAppSecret').value.trim();
+            
+            if (!appKey) {
+                showToast('Please enter your App Key', 'error');
+                document.getElementById('wizardAppKey').focus();
+                return;
+            }
+            
+            if (!appSecret) {
+                showToast('Please enter your App Secret', 'error');
+                document.getElementById('wizardAppSecret').focus();
+                return;
+            }
+            
+            if (appKey.length < 10) {
+                showToast('App Key seems too short. Please check and try again.', 'error');
+                return;
+            }
+            
+            if (appSecret.length < 10) {
+                showToast('App Secret seems too short. Please check and try again.', 'error');
+                return;
+            }
+            
+            wizardNext(4);
+        }
+        
+        function wizardOpenAuth() {
+            const appKey = document.getElementById('wizardAppKey').value.trim();
+            if (!appKey) {
+                showToast('Please go back and enter your App Key first', 'error');
+                return;
+            }
+            const authUrl = `https://www.dropbox.com/oauth2/authorize?client_id=${appKey}&response_type=code&token_access_type=offline`;
+            window.open(authUrl, '_blank');
+        }
+        
+        async function wizardComplete() {
+            const appKey = document.getElementById('wizardAppKey').value.trim();
+            const appSecret = document.getElementById('wizardAppSecret').value.trim();
+            const code = document.getElementById('wizardAuthCode').value.trim();
+            
+            if (!code) {
+                showToast('Please enter the authorization code from Dropbox', 'error');
+                document.getElementById('wizardAuthCode').focus();
+                return;
+            }
+            
+            showToast('Completing setup...', 'info');
+            
+            try {
+                // Exchange code for token
+                const exchangeResponse = await fetch('/api/auth/exchange', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({app_key: appKey, app_secret: appSecret, code: code})
+                });
+                
+                const exchangeData = await exchangeResponse.json();
+                
+                if (!exchangeData.success) {
+                    showToast(`Authorization failed: ${exchangeData.error}`, 'error');
+                    return;
+                }
+                
+                // Save credentials
+                await fetch('/api/credentials', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        app_key: appKey,
+                        app_secret: appSecret,
+                        refresh_token: exchangeData.refresh_token
+                    })
+                });
+                
+                // Test connection to get account name
+                const testResponse = await fetch('/api/auth/test', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        app_key: appKey,
+                        app_secret: appSecret,
+                        refresh_token: exchangeData.refresh_token
+                    })
+                });
+                
+                const testData = await testResponse.json();
+                
+                if (testData.success) {
+                    // Show success
+                    document.getElementById('wizardSuccessAccount').textContent = `Connected as: ${testData.account_name}`;
+                    
+                    // Mark all steps completed
+                    for (let i = 1; i <= 4; i++) {
+                        document.getElementById(`wizStep${i}Indicator`).classList.add('completed');
+                        document.getElementById(`wizStep${i}Indicator`).classList.remove('active');
+                    }
+                    
+                    // Hide all steps and show success
+                    for (let i = 1; i <= 4; i++) {
+                        document.getElementById(`wizStep${i}`).style.display = 'none';
+                    }
+                    document.getElementById('wizStepSuccess').style.display = 'block';
+                    
+                    showToast('Setup complete!', 'success');
+                } else {
+                    showToast(`Connection test failed: ${testData.error}`, 'error');
+                }
+            } catch (e) {
+                console.error('Wizard error:', e);
+                showToast('Setup failed. Please check your credentials and try again.', 'error');
+            }
+        }
+        
+        // Check if setup is needed on page load
+        async function checkSetupNeeded() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                if (!data.connected) {
+                    // Show setup wizard after a short delay
+                    setTimeout(() => {
+                        showSetupWizard();
+                    }, 1000);
+                }
+            } catch (e) {
+                console.error('Failed to check status:', e);
+            }
+        }
+        
         // Start polling
         fetchStatus();
         pollInterval = setInterval(fetchStatus, 400);
+        
+        // Check if setup is needed
+        checkSetupNeeded();
     </script>
 </body>
 </html>
