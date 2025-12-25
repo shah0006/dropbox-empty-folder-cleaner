@@ -767,6 +767,98 @@ HTML_PAGE = '''<!DOCTYPE html>
             transform: translateY(-2px);
         }
         
+        /* Help Button */
+        .help-btn {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        
+        .help-btn:hover {
+            background: var(--accent-cyan);
+            color: white;
+            border-color: var(--accent-cyan);
+            transform: scale(1.1);
+        }
+        
+        /* Help Modal */
+        .help-modal {
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .help-modal h2 {
+            color: var(--accent-cyan);
+            margin-bottom: 20px;
+        }
+        
+        .help-modal h3 {
+            color: var(--accent-purple);
+            font-size: 0.95em;
+            margin: 16px 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .help-modal p, .help-modal li {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            line-height: 1.6;
+            text-align: left;
+            margin-bottom: 8px;
+        }
+        
+        .help-modal ul {
+            margin: 8px 0;
+            padding-left: 20px;
+        }
+        
+        .help-modal li {
+            margin-bottom: 4px;
+        }
+        
+        .help-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+        }
+        
+        .help-warning {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 12px 0;
+            color: var(--accent-red);
+            font-size: 0.85em;
+        }
+        
+        .help-tip {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin: 12px 0;
+            color: var(--accent-green);
+            font-size: 0.85em;
+        }
+        
         /* Footer - Compact */
         footer {
             text-align: center;
@@ -790,6 +882,9 @@ HTML_PAGE = '''<!DOCTYPE html>
 </head>
 <body>
     <div class="bg-gradient"></div>
+    
+    <!-- Help Button -->
+    <button class="help-btn" onclick="showHelp()" title="Help & Documentation">?</button>
     
     <div class="container">
         <header>
@@ -914,6 +1009,64 @@ HTML_PAGE = '''<!DOCTYPE html>
                 <button class="btn btn-danger" onclick="executeDelete()">
                     🗑️ Delete Folders
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal help-modal">
+            <div class="modal-icon">📖</div>
+            <h2>Help & Documentation</h2>
+            
+            <h3>🎯 Purpose</h3>
+            <p>This tool helps you find and remove empty folders from your Dropbox account. Over time, empty folders accumulate from deleted files, failed syncs, and reorganization.</p>
+            
+            <h3>📋 How to Use</h3>
+            <div class="help-section">
+                <ol>
+                    <li><strong>Select a folder</strong> from the dropdown (or "/" for entire Dropbox)</li>
+                    <li><strong>Click "Scan"</strong> to find empty folders</li>
+                    <li><strong>Review the results</strong> - all empty folders will be listed</li>
+                    <li><strong>Click "Delete"</strong> if you want to remove them</li>
+                    <li><strong>Confirm</strong> in the popup dialog</li>
+                </ol>
+            </div>
+            
+            <h3>✨ Features</h3>
+            <ul>
+                <li><strong>Smart Detection</strong> - Finds truly empty folders (no files, no non-empty subfolders)</li>
+                <li><strong>Safe Deletion</strong> - Deletes deepest folders first, then parents</li>
+                <li><strong>Real-time Progress</strong> - Live folder/file counts and elapsed time</li>
+                <li><strong>Trash Recovery</strong> - Deleted folders go to Dropbox trash (30 days)</li>
+            </ul>
+            
+            <h3>⚠️ Limitations</h3>
+            <div class="help-warning">
+                <strong>Important:</strong>
+                <ul>
+                    <li>Cannot recover folders once deleted from Dropbox trash</li>
+                    <li>Does not check file contents, only if files exist</li>
+                    <li>May not work with Team/shared folders</li>
+                    <li>Large accounts may take several minutes to scan</li>
+                </ul>
+            </div>
+            
+            <h3>💡 Tips</h3>
+            <div class="help-tip">
+                <ul>
+                    <li>Start with a small folder to test</li>
+                    <li>Ensure Dropbox is fully synced before scanning</li>
+                    <li>Review the list carefully before deleting</li>
+                    <li>If rate limited, wait a few minutes and retry</li>
+                </ul>
+            </div>
+            
+            <h3>🔐 Privacy</h3>
+            <p>Your credentials are stored locally in a .env file. This tool communicates directly with Dropbox - no data is sent to third parties.</p>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="closeHelp()">Got it!</button>
             </div>
         </div>
     </div>
@@ -1132,6 +1285,14 @@ HTML_PAGE = '''<!DOCTYPE html>
         
         function closeModal() {
             document.getElementById('deleteModal').classList.remove('active');
+        }
+        
+        function showHelp() {
+            document.getElementById('helpModal').classList.add('active');
+        }
+        
+        function closeHelp() {
+            document.getElementById('helpModal').classList.remove('active');
         }
         
         async function executeDelete() {

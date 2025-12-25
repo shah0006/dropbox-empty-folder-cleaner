@@ -1,114 +1,207 @@
-# Dropbox Empty Folder Cleaner
+# 📁 Dropbox Empty Folder Cleaner
 
-A Python tool to find and delete empty folders in your Dropbox account.
+A powerful tool to find and safely delete empty folders in your Dropbox account. Available as both a modern web-based GUI and a command-line interface.
 
-## Features
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Python](https://img.shields.io/badge/python-3.9+-green)
+![License](https://img.shields.io/badge/license-MIT-purple)
 
-- **Dry-run mode**: Safely list empty folders without deleting anything
-- **Smart detection**: Identifies truly empty folders (no files, no non-empty subfolders)
-- **Bottom-up deletion**: Deletes deepest folders first, then parents as they become empty
-- **Confirmation prompt**: Requires explicit confirmation before any deletion
-- **Report generation**: Saves a detailed report of findings/actions
-- **Scoped scanning**: Only scans your personal folder, not team folders
+## 🎯 Purpose
 
-## Setup
+Over time, Dropbox accounts accumulate empty folders from:
+- Deleted files leaving behind folder structures
+- Failed syncs or interrupted uploads
+- Reorganization that moved files but left folders
+- Application artifacts and temporary folders
 
-### 1. Install dependencies
+This tool helps you **identify and remove** these empty folders to keep your Dropbox organized and clean.
+
+## ✨ Features
+
+### Core Features
+- **Recursive scanning** - Finds all empty folders, including nested ones
+- **Smart detection** - Only identifies truly empty folders (no files, no non-empty subfolders)
+- **Safe deletion order** - Deletes deepest folders first, then works backward to parents
+- **Dry-run mode** - Preview what would be deleted before taking action
+- **Confirmation prompts** - Requires explicit confirmation before any deletion
+- **Report generation** - Saves detailed reports of all actions
+
+### Web GUI Features
+- **Real-time progress** - Live folder/file counts as scanning progresses
+- **Elapsed time tracking** - See how long the scan takes
+- **Processing rate** - Items per second indicator
+- **Visual progress bar** - Red while running, solid green when complete
+- **Percentage display** - Exact completion percentage during deletion
+- **Modern dark theme** - Easy on the eyes, compact design
+
+### Command-Line Features
+- **Animated progress** - Spinner with live statistics
+- **Flexible paths** - Scan specific folders or entire Dropbox
+- **Batch operations** - Process multiple folders efficiently
+
+## 📋 Requirements
+
+- Python 3.9 or higher
+- Dropbox account
+- Dropbox API app with appropriate permissions
+
+## 🚀 Quick Start
+
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Configure credentials
+### 2. Set Up Dropbox API Access
 
-Create a `.env` file with your Dropbox credentials:
+1. Go to [Dropbox App Console](https://www.dropbox.com/developers/apps)
+2. Click **"Create app"**
+3. Choose **"Scoped access"** → **"Full Dropbox"**
+4. Name your app (e.g., "Empty Folder Cleaner")
+5. Go to **Permissions** tab and enable:
+   - `files.metadata.read`
+   - `files.content.write`
+6. Click **Submit** to save permissions
 
-```
-DROPBOX_APP_KEY=your_app_key
-DROPBOX_APP_SECRET=your_app_secret
-DROPBOX_ACCESS_TOKEN=your_access_token
-```
-
-## Usage
-
-### Dry Run (Recommended First)
-
-List all empty folders without deleting anything:
+### 3. Authorize the App
 
 ```bash
-python dropbox_empty_folder_cleaner.py --dry-run
+python3 dropbox_auth.py
 ```
 
-### Delete Empty Folders
+This opens your browser to authorize the app and saves a long-term refresh token.
 
-Find and delete empty folders (with confirmation):
+### 4. Run the Application
+
+**Web GUI (Recommended):**
+```bash
+python3 dropbox_cleaner_web.py
+```
+Opens a browser at http://127.0.0.1:8765
+
+**Command Line:**
+```bash
+# List available folders
+python3 dropbox_cleaner.py --list
+
+# Scan a specific folder (dry-run)
+python3 dropbox_cleaner.py --scan "/Documents"
+
+# Scan and delete empty folders
+python3 dropbox_cleaner.py --delete "/Documents"
+```
+
+## 📖 Usage Guide
+
+### Web GUI
+
+1. **Select a folder** from the dropdown menu
+2. **Click "Scan for Empty Folders"** to start scanning
+3. **Watch the progress** - folder count, file count, elapsed time, and rate
+4. **Review the results** - all empty folders are listed
+5. **Click "Delete Empty Folders"** if you want to remove them
+6. **Confirm deletion** in the popup dialog
+
+### Command Line
 
 ```bash
-python dropbox_empty_folder_cleaner.py --delete
+# Show help
+python3 dropbox_cleaner.py --help
+
+# List root folders
+python3 dropbox_cleaner.py --list
+
+# Scan specific folder (no deletion)
+python3 dropbox_cleaner.py --scan "/Photos/2023"
+
+# Scan entire Dropbox
+python3 dropbox_cleaner.py --scan ""
+
+# Delete empty folders (with confirmation)
+python3 dropbox_cleaner.py --delete "/Old Projects"
 ```
 
-### Scan a Specific Path
+## ⚠️ Important Limitations
 
-```bash
-python dropbox_empty_folder_cleaner.py --dry-run --path "/Tushar Shah/Projects"
+### What This Tool DOES:
+- ✅ Finds folders with no files and no non-empty subfolders
+- ✅ Deletes folders in safe order (deepest first)
+- ✅ Moves deleted folders to Dropbox trash (recoverable for 30 days)
+- ✅ Works with your personal Dropbox folders
+
+### What This Tool DOES NOT:
+- ❌ **Cannot recover deleted folders** - Once deleted from trash, they're gone forever
+- ❌ **Does not check file contents** - Only checks if files exist, not what's in them
+- ❌ **May not work with Team folders** - Designed for personal Dropbox accounts
+- ❌ **Cannot undo deletions** - Always use dry-run first!
+
+### Rate Limits
+- Dropbox API has rate limits for large accounts
+- Very large scans may take several minutes
+- If you see errors, wait a few minutes and try again
+
+### Sync Considerations
+- Ensure Dropbox is fully synced before scanning
+- Folders may appear empty if files haven't synced yet
+- Best used when Dropbox shows "Up to date"
+
+## 🔐 Security & Privacy
+
+- **Credentials stored locally** - Your `.env` file stays on your machine
+- **No data sent to third parties** - Direct communication with Dropbox API only
+- **Refresh tokens** - Long-term access without storing passwords
+- **Open source** - Full code available for review
+
+## 📁 File Structure
+
+```
+├── dropbox_cleaner_web.py    # Web GUI (recommended)
+├── dropbox_cleaner.py        # Command-line interface
+├── dropbox_auth.py           # OAuth2 authorization helper
+├── requirements.txt          # Python dependencies
+├── .env                      # Your credentials (git-ignored)
+├── .gitignore               # Git ignore rules
+└── README.md                # This file
 ```
 
-### Skip Report Generation
-
-```bash
-python dropbox_empty_folder_cleaner.py --dry-run --no-report
-```
-
-## Command Line Options
-
-| Option | Description |
-|--------|-------------|
-| `--dry-run` | List empty folders without deleting (safe mode) |
-| `--delete` | Find and delete empty folders (with confirmation) |
-| `--path PATH` | Root path to scan (default: `/Tushar Shah`) |
-| `--no-report` | Don't save a report file |
-
-## How It Works
-
-1. **Connects** to your Dropbox account using the access token
-2. **Recursively scans** all folders under the specified path
-3. **Identifies** folders that contain no files and no non-empty subfolders
-4. **Sorts** empty folders by depth (deepest first)
-5. **In delete mode**: Shows all empty folders and requires you to type `DELETE` to confirm
-6. **Deletes** folders in order (deepest first, so parents become empty naturally)
-7. **Generates** a report of all actions taken
-
-## Safety Features
-
-- **Dry-run by default**: You must explicitly choose `--delete` to remove anything
-- **Confirmation required**: Must type `DELETE` in all caps to proceed
-- **Trash-based deletion**: Deleted folders go to Dropbox trash (recoverable for 30 days)
-- **Detailed reports**: Every run generates a timestamped report
-- **No team folder access**: Only scans your personal folder by default
-
-## Testing Recommendations
-
-Before running on your full Dropbox:
-
-1. Create a test folder: `/Tushar Shah/TEST_EMPTY_FOLDERS`
-2. Create some empty subfolders inside it
-3. Run: `python dropbox_empty_folder_cleaner.py --dry-run --path "/Tushar Shah/TEST_EMPTY_FOLDERS"`
-4. Verify it finds the right folders
-5. Run: `python dropbox_empty_folder_cleaner.py --delete --path "/Tushar Shah/TEST_EMPTY_FOLDERS"`
-6. Verify only empty folders were deleted
-
-## Troubleshooting
+## 🛠️ Troubleshooting
 
 ### "Authentication failed"
-Your access token may have expired. Generate a new one from the [Dropbox App Console](https://www.dropbox.com/developers/apps).
+- Your tokens may have expired
+- Run `python3 dropbox_auth.py` to re-authorize
 
 ### "Folder not found"
-Check that the path exists and is spelled correctly. Paths are case-insensitive but must match the structure.
+- Check the folder path is correct
+- Paths are case-insensitive but must match structure
 
-### Rate limiting
-For very large Dropbox accounts, you may hit rate limits. The script handles pagination automatically, but if you see errors, wait a few minutes and try again.
+### "Rate limit exceeded"
+- Wait 5-10 minutes before retrying
+- Try scanning smaller folders individually
 
-## License
+### GUI won't open
+- Ensure port 8765 is available
+- Try: `lsof -i :8765` to check for conflicts
 
-MIT License - Feel free to modify and use as needed.
+### tkinter crashes (macOS)
+- Use the web GUI instead (`dropbox_cleaner_web.py`)
+- Known issue with macOS Tahoe and old Tcl/Tk
 
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Submit a pull request
+
+## 📄 License
+
+MIT License - Feel free to use, modify, and distribute.
+
+## 👤 Author
+
+Built for Tushar Shah
+
+---
+
+**⚠️ Always use dry-run mode first and verify the results before deleting!**
