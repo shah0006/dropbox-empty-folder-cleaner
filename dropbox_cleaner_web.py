@@ -2187,7 +2187,7 @@ HTML_PAGE = '''<!DOCTYPE html>
                 <div class="settings-list-container">
                     <label class="settings-label">System files to ignore:</label>
                     <textarea id="systemFilesList" class="settings-textarea" rows="4" placeholder="One file per line"></textarea>
-                    <span class="settings-hint">One filename per line (e.g., .DS_Store)</span>
+                    <span class="settings-hint">One per line. Exact names (.DS_Store) or wildcards (*.alias, *.lnk)</span>
                 </div>
             </div>
             
@@ -4046,12 +4046,26 @@ def connect_dropbox():
 
 
 def is_system_file(filename):
-    """Check if a file is a system file that should be ignored."""
+    """Check if a file is a system file that should be ignored.
+    Supports exact matches and wildcard patterns (e.g., *.alias, *.symlink)
+    """
+    import fnmatch
     config = app_state["config"]
     if not config.get("ignore_system_files", True):
         return False
     system_files = config.get("system_files", [])
-    return filename.lower() in [sf.lower() for sf in system_files] or filename in system_files
+    filename_lower = filename.lower()
+    
+    for pattern in system_files:
+        pattern_lower = pattern.lower()
+        # Check for exact match
+        if filename_lower == pattern_lower:
+            return True
+        # Check for wildcard pattern match (e.g., *.alias, *.symlink)
+        if '*' in pattern or '?' in pattern:
+            if fnmatch.fnmatch(filename_lower, pattern_lower):
+                return True
+    return False
 
 def should_exclude_folder(folder_path):
     """Check if a folder should be excluded based on patterns."""
