@@ -336,6 +336,134 @@ HTML_PAGE = '''<!DOCTYPE html>
             box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.1);
         }
         
+        /* Folder Tree Browser */
+        .folder-browser {
+            margin-bottom: 12px;
+        }
+        
+        .selected-folder {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 14px;
+            background: rgba(0, 188, 212, 0.1);
+            border: 1px solid var(--accent-cyan);
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .selected-folder-label {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+        }
+        
+        .selected-folder-path {
+            color: var(--accent-cyan);
+            font-weight: 500;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 0.9em;
+        }
+        
+        .folder-tree-container {
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+        
+        .folder-tree {
+            padding: 8px;
+        }
+        
+        .tree-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.15s ease;
+            user-select: none;
+            font-size: 0.85em;
+        }
+        
+        .tree-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+        }
+        
+        .tree-item.selected {
+            background: rgba(0, 188, 212, 0.2);
+            color: var(--accent-cyan);
+        }
+        
+        .tree-item.selected .tree-label {
+            font-weight: 500;
+        }
+        
+        .tree-icon {
+            font-size: 1em;
+            width: 20px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+        
+        .tree-expand {
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            color: var(--text-secondary);
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+        
+        .tree-expand.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .tree-expand.loading {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .tree-label {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        
+        .tree-children {
+            margin-left: 20px;
+            border-left: 1px dashed var(--border-color);
+            padding-left: 8px;
+        }
+        
+        .tree-children.collapsed {
+            display: none;
+        }
+        
+        .tree-loading {
+            padding: 8px 10px;
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            font-style: italic;
+        }
+        
+        .tree-empty {
+            padding: 8px 10px;
+            color: var(--text-secondary);
+            font-size: 0.8em;
+            font-style: italic;
+        }
+        
         /* Buttons - Compact */
         .btn {
             padding: 10px 20px;
@@ -1805,9 +1933,26 @@ HTML_PAGE = '''<!DOCTYPE html>
             <div class="card-title">
                 <span class="card-title-left">📂 Select Folder to Scan</span>
             </div>
-            <select id="folderSelect" data-tooltip="Choose which folder to scan. Select '/' to scan your entire Dropbox, or pick a specific folder." data-tooltip-pos="bottom">
-                <option value="">Loading folders...</option>
-            </select>
+            <div class="folder-browser">
+                <div class="selected-folder" id="selectedFolderDisplay" 
+                     data-tooltip="Currently selected folder. Click in the tree below to change."
+                     data-tooltip-pos="bottom">
+                    <span class="selected-folder-label">Selected:</span>
+                    <span class="selected-folder-path" id="selectedPath">/ (Entire Dropbox)</span>
+                </div>
+                <div class="folder-tree-container" id="folderTreeContainer">
+                    <div class="folder-tree" id="folderTree">
+                        <div class="tree-item root-item selected" data-path="" onclick="selectFolder(this, '')">
+                            <span class="tree-icon">🏠</span>
+                            <span class="tree-label">/ (Entire Dropbox)</span>
+                        </div>
+                        <div id="rootFolders" class="tree-children">
+                            <div class="tree-loading">Loading folders...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="folderSelect" value="">
             <div class="btn-group">
                 <button id="scanBtn" class="btn btn-primary" onclick="startScan()" 
                         data-tooltip="Search the selected folder for empty folders. This is safe - nothing will be deleted until you click Delete."
@@ -2462,6 +2607,105 @@ HTML_PAGE = '''<!DOCTYPE html>
     <script>
         let pollInterval = null;
         let emptyFolders = [];
+        let selectedFolderPath = '';
+        let loadedFolders = new Set(); // Track which folders have been loaded
+        
+        // Folder Tree Functions
+        function selectFolder(element, path) {
+            // Remove selected class from all items
+            document.querySelectorAll('.tree-item.selected').forEach(el => {
+                el.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked item
+            element.classList.add('selected');
+            
+            // Update hidden input and display
+            selectedFolderPath = path;
+            document.getElementById('folderSelect').value = path;
+            document.getElementById('selectedPath').textContent = path || '/ (Entire Dropbox)';
+        }
+        
+        async function toggleFolder(event, element, path) {
+            event.stopPropagation();
+            
+            const childrenContainer = element.parentElement.querySelector('.tree-children');
+            const expandIcon = element.querySelector('.tree-expand');
+            
+            if (!childrenContainer) return;
+            
+            // If already expanded, collapse
+            if (!childrenContainer.classList.contains('collapsed')) {
+                childrenContainer.classList.add('collapsed');
+                expandIcon.classList.remove('expanded');
+                return;
+            }
+            
+            // If not loaded yet, load subfolders
+            if (!loadedFolders.has(path)) {
+                expandIcon.classList.add('loading');
+                expandIcon.textContent = '⟳';
+                
+                try {
+                    const response = await fetch('/api/subfolders?path=' + encodeURIComponent(path));
+                    const data = await response.json();
+                    
+                    if (data.subfolders && data.subfolders.length > 0) {
+                        childrenContainer.innerHTML = data.subfolders.map(folder => `
+                            <div class="tree-item-wrapper">
+                                <div class="tree-item" data-path="${folder.path}" onclick="selectFolder(this, '${folder.path.replace(/'/g, "\\'")}')">
+                                    <span class="tree-expand" onclick="toggleFolder(event, this.parentElement, '${folder.path.replace(/'/g, "\\'")}')">▶</span>
+                                    <span class="tree-icon">📁</span>
+                                    <span class="tree-label">${folder.name}</span>
+                                </div>
+                                <div class="tree-children collapsed"></div>
+                            </div>
+                        `).join('');
+                    } else {
+                        childrenContainer.innerHTML = '<div class="tree-empty">No subfolders</div>';
+                    }
+                    
+                    loadedFolders.add(path);
+                } catch (e) {
+                    console.error('Failed to load subfolders:', e);
+                    childrenContainer.innerHTML = '<div class="tree-empty">Error loading folders</div>';
+                }
+                
+                expandIcon.classList.remove('loading');
+                expandIcon.textContent = '▶';
+            }
+            
+            // Expand
+            childrenContainer.classList.remove('collapsed');
+            expandIcon.classList.add('expanded');
+        }
+        
+        async function loadRootFolders() {
+            const container = document.getElementById('rootFolders');
+            
+            try {
+                const response = await fetch('/api/subfolders?path=');
+                const data = await response.json();
+                
+                if (data.subfolders && data.subfolders.length > 0) {
+                    container.innerHTML = data.subfolders.map(folder => `
+                        <div class="tree-item-wrapper">
+                            <div class="tree-item" data-path="${folder.path}" onclick="selectFolder(this, '${folder.path.replace(/'/g, "\\'")}')">
+                                <span class="tree-expand" onclick="toggleFolder(event, this.parentElement, '${folder.path.replace(/'/g, "\\'")}')">▶</span>
+                                <span class="tree-icon">📁</span>
+                                <span class="tree-label">${folder.name}</span>
+                            </div>
+                            <div class="tree-children collapsed"></div>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div class="tree-empty">No folders found</div>';
+                }
+            } catch (e) {
+                console.error('Failed to load root folders:', e);
+                container.innerHTML = '<div class="tree-empty">Error loading folders</div>';
+            }
+        }
         
         async function fetchStatus() {
             try {
@@ -2666,7 +2910,7 @@ HTML_PAGE = '''<!DOCTYPE html>
         }
         
         async function startScan() {
-            const folder = document.getElementById('folderSelect').value;
+            const folder = selectedFolderPath; // Use tree selection
             document.getElementById('resultsCard').style.display = 'none';
             document.getElementById('emptyStatCard').style.display = 'none';
             
@@ -3279,6 +3523,9 @@ HTML_PAGE = '''<!DOCTYPE html>
         fetchStatus();
         pollInterval = setInterval(fetchStatus, 400);
         
+        // Load folder tree
+        loadRootFolders();
+        
         // Check if setup is needed
         checkSetupNeeded();
         
@@ -3319,6 +3566,39 @@ class DropboxHandler(BaseHTTPRequestHandler):
         """Handle GET requests."""
         if self.path == '/':
             self.send_html(HTML_PAGE)
+        elif self.path.startswith('/api/subfolders'):
+            # Get subfolders for a given path
+            from urllib.parse import urlparse, parse_qs
+            parsed = urlparse(self.path)
+            params = parse_qs(parsed.query)
+            folder_path = params.get('path', [''])[0]
+            
+            if not app_state["connected"] or not app_state["dbx"]:
+                self.send_json({"error": "Not connected", "subfolders": []})
+            else:
+                try:
+                    dbx = app_state["dbx"]
+                    # List folder contents (non-recursive, folders only)
+                    result = dbx.files_list_folder(folder_path if folder_path else "")
+                    subfolders = []
+                    
+                    while True:
+                        for entry in result.entries:
+                            if isinstance(entry, dropbox.files.FolderMetadata):
+                                subfolders.append({
+                                    "name": entry.name,
+                                    "path": entry.path_display
+                                })
+                        if not result.has_more:
+                            break
+                        result = dbx.files_list_folder_continue(result.cursor)
+                    
+                    # Sort alphabetically
+                    subfolders.sort(key=lambda x: x["name"].lower())
+                    self.send_json({"subfolders": subfolders})
+                except Exception as e:
+                    logger.error(f"Error listing subfolders for {folder_path}: {e}")
+                    self.send_json({"error": str(e), "subfolders": []})
         elif self.path == '/api/status':
             self.send_json({
                 "connected": app_state["connected"],
