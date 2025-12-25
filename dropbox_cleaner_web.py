@@ -2018,11 +2018,19 @@ HTML_PAGE = '''<!DOCTYPE html>
         <div class="card">
             <div class="card-title">
                 <span class="card-title-left">🔗 Connection Status</span>
-                <span id="connectionStatus" class="status-badge status-disconnected" 
-                      data-tooltip="Shows whether your Dropbox account is connected. Green = connected, Red = not connected.">
-                    <span class="status-dot"></span>
-                    Connecting...
-                </span>
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <span id="modeStatusBadge" class="status-badge status-dropbox" 
+                          data-tooltip="Current operating mode - Dropbox API or Local Filesystem"
+                          style="background: rgba(100, 100, 255, 0.2); border-color: #6666ff;">
+                        <span class="status-dot" style="background: #6666ff;"></span>
+                        Dropbox Mode
+                    </span>
+                    <span id="connectionStatus" class="status-badge status-disconnected" 
+                          data-tooltip="Shows whether your Dropbox account is connected. Green = connected, Red = not connected.">
+                        <span class="status-dot"></span>
+                        Connecting...
+                    </span>
+                </div>
             </div>
             <p id="accountInfo" style="color: var(--text-secondary);"></p>
             <div id="setupPrompt" style="display: none; margin-top: 12px;">
@@ -2232,7 +2240,37 @@ HTML_PAGE = '''<!DOCTYPE html>
             <div class="modal-icon">⚙️</div>
             <h2>Settings</h2>
             
-            <div class="settings-section">
+            <div class="settings-section" style="background: linear-gradient(135deg, rgba(0,200,150,0.1), rgba(0,100,200,0.1)); border: 1px solid var(--accent-cyan);">
+                <h3>🔀 Operating Mode</h3>
+                <p class="settings-desc">Choose where to scan for empty folders.</p>
+                
+                <div class="mode-toggle-container" style="display: flex; gap: 10px; margin: 15px 0;">
+                    <label class="mode-option" style="flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; border: 2px solid var(--border-color); transition: all 0.2s;">
+                        <input type="radio" name="operatingMode" value="dropbox" id="modeDropbox" onchange="toggleModeUI()">
+                        <span style="font-size: 1.5em;">☁️</span>
+                        <span style="display: block; font-weight: bold; margin-top: 5px;">Dropbox API</span>
+                        <span style="display: block; font-size: 0.8em; opacity: 0.7;">Scan online Dropbox</span>
+                    </label>
+                    <label class="mode-option" style="flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; border: 2px solid var(--border-color); transition: all 0.2s;">
+                        <input type="radio" name="operatingMode" value="local" id="modeLocal" onchange="toggleModeUI()">
+                        <span style="font-size: 1.5em;">💾</span>
+                        <span style="display: block; font-weight: bold; margin-top: 5px;">Local Filesystem</span>
+                        <span style="display: block; font-size: 0.8em; opacity: 0.7;">Scan local/external drive</span>
+                    </label>
+                </div>
+                
+                <div id="localPathSettings" style="display: none; margin-top: 15px;">
+                    <div class="settings-list-container">
+                        <label class="settings-label">📁 Local Path:</label>
+                        <input type="text" id="settingsLocalPath" class="settings-input-full" 
+                               placeholder="/Volumes/ExternalDrive/Dropbox"
+                               style="font-family: monospace;">
+                        <span class="settings-hint">Full path to the folder you want to scan (e.g., /Volumes/EasyStore 20 Tb/ATeam Dropbox)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-section" id="dropboxSettingsSection">
                 <h3>🔐 Dropbox Connection</h3>
                 <p class="settings-desc">Configure your Dropbox API credentials. <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color: var(--accent-cyan);">Create a Dropbox App</a></p>
                 
@@ -3044,7 +3082,15 @@ HTML_PAGE = '''<!DOCTYPE html>
             const accountEl = document.getElementById('accountInfo');
             const setupPrompt = document.getElementById('setupPrompt');
             
-            if (data.connected) {
+            const mode = data.config?.mode || 'dropbox';
+            
+            if (mode === 'local') {
+                // Local mode - no Dropbox connection needed
+                statusEl.className = 'status-badge status-connected';
+                statusEl.innerHTML = '<span class="status-dot"></span> Local Ready';
+                accountEl.textContent = `Path: ${data.config?.local_path || 'Not set'}`;
+                setupPrompt.style.display = 'none';
+            } else if (data.connected) {
                 statusEl.className = 'status-badge status-connected';
                 statusEl.innerHTML = '<span class="status-dot"></span> Connected';
                 accountEl.textContent = `Logged in as ${data.account_name} (${data.account_email})`;
@@ -3302,6 +3348,23 @@ HTML_PAGE = '''<!DOCTYPE html>
         function updateConfigUI(config) {
             if (config) {
                 document.getElementById('ignoreSystemFiles').checked = config.ignore_system_files !== false;
+                
+                // Update mode badge
+                const modeBadge = document.getElementById('modeStatusBadge');
+                if (modeBadge) {
+                    const mode = config.mode || 'dropbox';
+                    if (mode === 'local') {
+                        modeBadge.innerHTML = '<span class="status-dot" style="background: #00ff88;"></span> Local Mode';
+                        modeBadge.style.background = 'rgba(0, 255, 136, 0.2)';
+                        modeBadge.style.borderColor = '#00ff88';
+                        modeBadge.title = 'Scanning: ' + (config.local_path || 'Not set');
+                    } else {
+                        modeBadge.innerHTML = '<span class="status-dot" style="background: #6666ff;"></span> Dropbox Mode';
+                        modeBadge.style.background = 'rgba(100, 100, 255, 0.2)';
+                        modeBadge.style.borderColor = '#6666ff';
+                        modeBadge.title = 'Scanning Dropbox via API';
+                    }
+                }
             }
         }
         
@@ -3330,8 +3393,40 @@ HTML_PAGE = '''<!DOCTYPE html>
             document.getElementById('settingsModal').classList.remove('active');
         }
         
+        // Toggle between Dropbox and Local mode UI
+        function toggleModeUI() {
+            const isLocal = document.getElementById('modeLocal').checked;
+            const localPathSettings = document.getElementById('localPathSettings');
+            const dropboxSettings = document.getElementById('dropboxSettingsSection');
+            
+            if (isLocal) {
+                localPathSettings.style.display = 'block';
+                dropboxSettings.style.opacity = '0.5';
+                dropboxSettings.style.pointerEvents = 'none';
+            } else {
+                localPathSettings.style.display = 'none';
+                dropboxSettings.style.opacity = '1';
+                dropboxSettings.style.pointerEvents = 'auto';
+            }
+            
+            // Update mode indicator styles
+            document.querySelectorAll('.mode-option').forEach(opt => {
+                opt.style.borderColor = 'var(--border-color)';
+                opt.style.background = 'transparent';
+            });
+            const activeOption = document.querySelector('input[name="operatingMode"]:checked').parentElement;
+            activeOption.style.borderColor = 'var(--accent-cyan)';
+            activeOption.style.background = 'rgba(0, 200, 255, 0.1)';
+        }
+        
         async function saveSettings() {
+            // Get mode
+            const mode = document.querySelector('input[name="operatingMode"]:checked').value;
+            const localPath = document.getElementById('settingsLocalPath').value;
+            
             const newConfig = {
+                mode: mode,
+                local_path: localPath,
                 ignore_system_files: document.getElementById('settingsIgnoreSystem').checked,
                 system_files: getEnabledSystemFiles(),
                 exclude_patterns: document.getElementById('excludePatternsList').value
@@ -3353,7 +3448,12 @@ HTML_PAGE = '''<!DOCTYPE html>
                     closeSettings();
                     // Update main toggle
                     document.getElementById('ignoreSystemFiles').checked = newConfig.ignore_system_files;
-                    showToast('Settings saved successfully!', 'success');
+                    // Update mode indicator in UI
+                    updateModeIndicator(mode, localPath);
+                    // Refresh folder tree for new mode
+                    loadedFolders.clear();
+                    await loadRootFolders();
+                    showToast('Settings saved successfully! Mode: ' + (mode === 'local' ? 'Local Filesystem' : 'Dropbox API'), 'success');
                 } else {
                     showToast('Failed to save settings', 'error');
                 }
@@ -3835,6 +3935,22 @@ HTML_PAGE = '''<!DOCTYPE html>
             }
         }
         
+        // Update mode indicator in main UI
+        function updateModeIndicator(mode, localPath) {
+            const statusBadge = document.getElementById('modeStatusBadge');
+            if (statusBadge) {
+                if (mode === 'local') {
+                    statusBadge.innerHTML = '<span class="status-dot" style="background: #00ff88;"></span> Local Mode';
+                    statusBadge.title = 'Scanning: ' + localPath;
+                    statusBadge.className = 'status-badge status-local';
+                } else {
+                    statusBadge.innerHTML = '<span class="status-dot"></span> Dropbox Mode';
+                    statusBadge.title = 'Scanning Dropbox via API';
+                    statusBadge.className = 'status-badge status-dropbox';
+                }
+            }
+        }
+        
         // Direct function to open settings modal - defined before event listeners
         window.openSettingsModal = async function() {
             console.log('Opening settings modal...');
@@ -3866,7 +3982,17 @@ HTML_PAGE = '''<!DOCTYPE html>
                 // Load config
                 const configResponse = await fetch('/api/config');
                 const config = await configResponse.json();
-                console.log('Config loaded');
+                console.log('Config loaded:', config);
+                
+                // Set mode radio buttons
+                const mode = config.mode || 'dropbox';
+                if (mode === 'local') {
+                    document.getElementById('modeLocal').checked = true;
+                } else {
+                    document.getElementById('modeDropbox').checked = true;
+                }
+                document.getElementById('settingsLocalPath').value = config.local_path || '';
+                toggleModeUI(); // Update UI based on mode
                 
                 document.getElementById('settingsIgnoreSystem').checked = config.ignore_system_files !== false;
                 loadSystemFilesFromConfig(config.system_files || defaultSystemFiles);
@@ -3973,7 +4099,14 @@ class DropboxHandler(BaseHTTPRequestHandler):
             params = parse_qs(parsed.query)
             folder_path = params.get('path', [''])[0]
             
-            if not app_state["connected"] or not app_state["dbx"]:
+            # Check mode - local or dropbox
+            mode = app_state["config"].get("mode", "dropbox")
+            
+            if mode == "local":
+                # Local filesystem mode
+                subfolders = get_local_subfolders(folder_path)
+                self.send_json({"subfolders": subfolders, "mode": "local"})
+            elif not app_state["connected"] or not app_state["dbx"]:
                 self.send_json({"error": "Not connected", "subfolders": []})
             else:
                 try:
@@ -3995,7 +4128,7 @@ class DropboxHandler(BaseHTTPRequestHandler):
                     
                     # Sort alphabetically
                     subfolders.sort(key=lambda x: x["name"].lower())
-                    self.send_json({"subfolders": subfolders})
+                    self.send_json({"subfolders": subfolders, "mode": "dropbox"})
                 except Exception as e:
                     logger.error(f"Error listing subfolders for {folder_path}: {e}")
                     self.send_json({"error": str(e), "subfolders": []})
@@ -4087,13 +4220,25 @@ class DropboxHandler(BaseHTTPRequestHandler):
         
         if self.path == '/api/scan':
             folder = data.get('folder', '')
-            logger.info(f"API request: Start scan for folder '{folder if folder else '/'}'")
-            threading.Thread(target=scan_folder, args=(folder,), daemon=True).start()
-            self.send_json({"status": "started"})
+            mode = app_state["config"].get("mode", "dropbox")
+            logger.info(f"API request: Start scan for folder '{folder if folder else '/'}' (mode: {mode})")
+            
+            if mode == "local":
+                threading.Thread(target=scan_local_folder, args=(folder,), daemon=True).start()
+            else:
+                threading.Thread(target=scan_folder, args=(folder,), daemon=True).start()
+            
+            self.send_json({"status": "started", "mode": mode})
         elif self.path == '/api/delete':
-            logger.info("API request: Start deletion")
-            threading.Thread(target=delete_folders, daemon=True).start()
-            self.send_json({"status": "started"})
+            mode = app_state["config"].get("mode", "dropbox")
+            logger.info(f"API request: Start deletion (mode: {mode})")
+            
+            if mode == "local":
+                threading.Thread(target=delete_local_folders, daemon=True).start()
+            else:
+                threading.Thread(target=delete_folders, daemon=True).start()
+            
+            self.send_json({"status": "started", "mode": mode})
         elif self.path == '/api/config':
             # Update configuration
             logger.info(f"API request: Update config with {data}")
@@ -4535,6 +4680,290 @@ def verify_folder_empty(dbx, folder_path):
         return False, 0, str(e)
     except Exception as e:
         return False, 0, str(e)
+
+
+# ============================================================
+# LOCAL FILESYSTEM FUNCTIONS
+# ============================================================
+
+def scan_local_folder(scan_path):
+    """Scan a local folder for empty folders."""
+    config = app_state["config"]
+    base_path = config.get("local_path", "")
+    
+    # Construct full path
+    if scan_path:
+        full_path = os.path.join(base_path, scan_path.lstrip('/'))
+    else:
+        full_path = base_path
+    
+    display_path = scan_path if scan_path else base_path
+    logger.info(f"Starting LOCAL scan of: {display_path}")
+    logger.info(f"Full path: {full_path}")
+    
+    if not os.path.exists(full_path):
+        logger.error(f"Path does not exist: {full_path}")
+        app_state["scan_progress"]["status"] = "error"
+        app_state["scanning"] = False
+        return
+    
+    logger.info(f"Ignore system files: {config.get('ignore_system_files', True)}")
+    logger.info(f"System files: {config.get('system_files', [])}")
+    logger.info(f"Exclude patterns: {config.get('exclude_patterns', [])}")
+    
+    start_time = time.time()
+    app_state["scanning"] = True
+    app_state["scan_progress"] = {
+        "folders": 0, 
+        "files": 0, 
+        "status": "scanning", 
+        "start_time": start_time,
+        "elapsed": 0,
+        "rate": 0
+    }
+    app_state["empty_folders"] = []
+    app_state["case_map"] = {}
+    app_state["last_scan_folder"] = scan_path
+    app_state["stats"] = {"depth_distribution": {}, "total_scanned": 0, "system_files_ignored": 0, "excluded_folders": 0}
+    
+    all_folders = set()
+    folders_with_content = set()
+    system_files_ignored = 0
+    excluded_folders = 0
+    
+    try:
+        # Walk the directory tree
+        for root, dirs, files in os.walk(full_path):
+            # Get relative path from base
+            rel_path = os.path.relpath(root, base_path)
+            if rel_path == '.':
+                rel_path = ''
+            
+            # Normalize path for consistency (use forward slashes)
+            norm_path = '/' + rel_path.replace('\\', '/') if rel_path else ''
+            
+            # Check if folder should be excluded
+            folder_name = os.path.basename(root)
+            if should_exclude_folder(folder_name):
+                excluded_folders += 1
+                logger.debug(f"Excluding folder (pattern match): {norm_path}")
+                dirs[:] = []  # Don't descend into excluded folders
+                continue
+            
+            # Add this folder
+            all_folders.add(norm_path.lower())
+            app_state["case_map"][norm_path.lower()] = norm_path
+            app_state["scan_progress"]["folders"] = len(all_folders)
+            
+            # Process files
+            has_legitimate_files = False
+            for filename in files:
+                if is_system_file(filename):
+                    system_files_ignored += 1
+                    logger.debug(f"Ignoring system file: {os.path.join(norm_path, filename)}")
+                else:
+                    app_state["scan_progress"]["files"] += 1
+                    has_legitimate_files = True
+            
+            if has_legitimate_files:
+                folders_with_content.add(norm_path.lower())
+            
+            # Update elapsed time and rate
+            elapsed = time.time() - start_time
+            total_items = app_state["scan_progress"]["folders"] + app_state["scan_progress"]["files"]
+            app_state["scan_progress"]["elapsed"] = elapsed
+            app_state["scan_progress"]["rate"] = int(total_items / elapsed) if elapsed > 0 else 0
+        
+        # Final timing update
+        elapsed = time.time() - start_time
+        app_state["scan_progress"]["elapsed"] = elapsed
+        
+        # Update stats
+        app_state["stats"]["total_scanned"] = len(all_folders)
+        app_state["stats"]["system_files_ignored"] = system_files_ignored
+        app_state["stats"]["excluded_folders"] = excluded_folders
+        
+        logger.info(f"Scan complete: {len(all_folders)} folders, {app_state['scan_progress']['files']} files in {elapsed:.2f}s")
+        logger.info(f"System files ignored: {system_files_ignored}, Excluded folders: {excluded_folders}")
+        
+        # Find empty folders
+        logger.debug("Analyzing folder structure to find empty folders...")
+        empty = find_empty_folders(all_folders, folders_with_content)
+        app_state["empty_folders"] = empty
+        app_state["scan_progress"]["status"] = "complete"
+        
+        # Calculate depth distribution
+        depth_dist = {}
+        for folder in empty:
+            depth = folder.count('/')
+            depth_dist[depth] = depth_dist.get(depth, 0) + 1
+        app_state["stats"]["depth_distribution"] = depth_dist
+        
+        logger.info(f"Found {len(empty)} empty folder(s)")
+        if empty:
+            logger.debug(f"Empty folders: {[app_state['case_map'].get(f, f) for f in empty[:10]]}{'...' if len(empty) > 10 else ''}")
+            logger.info(f"Depth distribution: {depth_dist}")
+        
+    except PermissionError as e:
+        logger.error(f"Permission denied: {e}")
+        app_state["scan_progress"]["status"] = "error"
+    except Exception as e:
+        logger.exception(f"Unexpected error during local scan: {e}")
+        app_state["scan_progress"]["status"] = "error"
+    
+    app_state["scanning"] = False
+    logger.debug("Local scan thread finished")
+
+
+def verify_local_folder_empty(folder_path):
+    """
+    FAIL-SAFE: Independently verify a local folder is truly empty before deletion.
+    Returns: (is_empty: bool, file_count: int, error: str or None)
+    """
+    config = app_state["config"]
+    base_path = config.get("local_path", "")
+    full_path = os.path.join(base_path, folder_path.lstrip('/'))
+    
+    try:
+        if not os.path.exists(full_path):
+            return True, 0, "folder_not_found"
+        
+        file_count = 0
+        for root, dirs, files in os.walk(full_path):
+            for filename in files:
+                # Only count non-system files
+                if not is_system_file(filename):
+                    file_count += 1
+                    if file_count > 0:
+                        return False, file_count, None
+        
+        return file_count == 0, file_count, None
+        
+    except PermissionError as e:
+        return False, 0, f"Permission denied: {e}"
+    except Exception as e:
+        return False, 0, str(e)
+
+
+def delete_local_folders():
+    """Delete empty local folders with fail-safe verification before each deletion."""
+    import shutil
+    
+    config = app_state["config"]
+    base_path = config.get("local_path", "")
+    
+    total = len(app_state["empty_folders"])
+    logger.info(f"Starting LOCAL deletion of {total} empty folder(s)")
+    logger.warning("⚠️  LOCAL DELETION OPERATION INITIATED - folders will be permanently deleted!")
+    logger.info("🛡️  FAIL-SAFE ENABLED: Each folder will be re-verified before deletion")
+    
+    start_time = time.time()
+    app_state["deleting"] = True
+    app_state["delete_progress"] = {"current": 0, "total": total, "status": "deleting", "percent": 0}
+    
+    deleted_count = 0
+    skipped_count = 0
+    error_count = 0
+    
+    for i, folder in enumerate(app_state["empty_folders"]):
+        display_path = app_state["case_map"].get(folder, folder)
+        full_path = os.path.join(base_path, folder.lstrip('/'))
+        
+        # FAIL-SAFE VERIFICATION
+        is_empty, file_count, verify_error = verify_local_folder_empty(folder)
+        
+        if verify_error == "folder_not_found":
+            logger.info(f"✓ Folder {display_path} already gone (likely parent deleted it). Counting as deleted.")
+            deleted_count += 1
+        elif not is_empty:
+            logger.warning(f"🛡️  FAIL-SAFE: Folder {display_path} is NO LONGER EMPTY! Found {file_count} file(s) - SKIPPING deletion.")
+            skipped_count += 1
+        elif verify_error:
+            logger.error(f"✗ Verification error for {display_path}: {verify_error} - SKIPPING")
+            skipped_count += 1
+        else:
+            try:
+                logger.debug(f"Deleting [{i+1}/{total}]: {display_path}")
+                
+                # First try to remove just the directory (if truly empty including system files)
+                try:
+                    os.rmdir(full_path)
+                except OSError:
+                    # Directory not empty - might have system files, use shutil
+                    shutil.rmtree(full_path)
+                
+                deleted_count += 1
+                logger.info(f"✓ Deleted: {display_path}")
+            except PermissionError as e:
+                error_count += 1
+                logger.error(f"✗ Permission denied for {display_path}: {e}")
+            except Exception as e:
+                error_count += 1
+                logger.exception(f"✗ Unexpected error deleting {display_path}: {e}")
+        
+        current = i + 1
+        app_state["delete_progress"]["current"] = current
+        app_state["delete_progress"]["percent"] = int((current / total) * 100) if total > 0 else 100
+    
+    elapsed = time.time() - start_time
+    app_state["empty_folders"] = []
+    app_state["delete_progress"]["status"] = "complete"
+    app_state["delete_progress"]["percent"] = 100
+    app_state["deleting"] = False
+    
+    # Detailed completion log
+    logger.info(f"=" * 60)
+    logger.info(f"LOCAL DELETION COMPLETE")
+    logger.info(f"=" * 60)
+    logger.info(f"  ✓ Successfully deleted: {deleted_count}")
+    logger.info(f"  🛡️  Skipped (fail-safe): {skipped_count}")
+    logger.info(f"  ✗ Errors: {error_count}")
+    logger.info(f"  ⏱️  Time elapsed: {elapsed:.2f}s")
+    logger.info(f"=" * 60)
+
+
+def get_local_subfolders(folder_path):
+    """Get subfolders of a local folder."""
+    config = app_state["config"]
+    base_path = config.get("local_path", "")
+    
+    if folder_path:
+        full_path = os.path.join(base_path, folder_path.lstrip('/'))
+    else:
+        full_path = base_path
+    
+    subfolders = []
+    
+    try:
+        if not os.path.exists(full_path):
+            logger.error(f"Local path does not exist: {full_path}")
+            return subfolders
+        
+        for item in os.listdir(full_path):
+            item_path = os.path.join(full_path, item)
+            if os.path.isdir(item_path):
+                # Skip excluded folders
+                if should_exclude_folder(item):
+                    continue
+                
+                # Get path relative to base
+                rel_path = os.path.relpath(item_path, base_path)
+                display_path = '/' + rel_path.replace('\\', '/')
+                
+                subfolders.append({
+                    "name": item,
+                    "path": display_path
+                })
+        
+        # Sort alphabetically
+        subfolders.sort(key=lambda x: x["name"].lower())
+        
+    except PermissionError as e:
+        logger.error(f"Permission denied listing {full_path}: {e}")
+    except Exception as e:
+        logger.error(f"Error listing local folder {full_path}: {e}")
+    
+    return subfolders
 
 
 def delete_folders():

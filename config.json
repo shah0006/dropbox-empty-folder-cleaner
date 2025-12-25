@@ -8,7 +8,10 @@
     ".dropbox.attr",
     "Icon",
     "Icon\r",
-    ".localized"
+    ".localized",
+    "*.alias",
+    "*.lnk",
+    "*.symlink"
   ],
   "exclude_patterns": [
     ".git",
@@ -19,5 +22,7 @@
   ],
   "export_format": "json",
   "auto_open_browser": true,
-  "port": 8888
+  "port": 8888,
+  "mode": "dropbox",
+  "local_path": "/Volumes/EasyStore 20 Tb/ATeam Dropbox"
 }
