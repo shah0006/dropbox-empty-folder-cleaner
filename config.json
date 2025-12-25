@@ -8,10 +8,7 @@
     ".dropbox.attr",
     "Icon",
     "Icon\r",
-    ".localized",
-    "*.alias",
-    "*.lnk",
-    "*.symlink"
+    ".localized"
   ],
   "exclude_patterns": [
     ".git",

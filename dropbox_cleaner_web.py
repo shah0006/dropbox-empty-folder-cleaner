@@ -365,11 +365,19 @@ HTML_PAGE = '''<!DOCTYPE html>
         }
         
         .folder-tree-container {
-            max-height: 250px;
+            min-height: 120px;
+            max-height: 500px;
+            height: 200px;
             overflow-y: auto;
             border: 1px solid var(--border-color);
             border-radius: 8px;
             background: rgba(0, 0, 0, 0.3);
+            resize: vertical;
+        }
+        
+        .folder-tree-container::-webkit-resizer {
+            background: linear-gradient(135deg, transparent 50%, var(--accent-cyan) 50%);
+            border-radius: 0 0 8px 0;
         }
         
         .folder-tree {
