@@ -2112,7 +2112,7 @@ HTML_PAGE = '''<!DOCTYPE html>
                         <div class="stat-value" id="folderCount">0</div>
                         <div class="stat-label">Folders Scanned</div>
                     </div>
-                    <div class="stat-card files active" id="fileStatCard" data-tooltip="Total number of files found (folders with files are not empty)">
+                    <div class="stat-card files active" id="fileStatCard" data-tooltip="Legitimate files found (excludes ignored system files like .DS_Store)">
                         <div class="stat-icon">📄</div>
                         <div class="stat-value" id="fileCount">0</div>
                         <div class="stat-label">Files Found</div>
@@ -4310,7 +4310,6 @@ def scan_folder(folder_path):
                     app_state["scan_progress"]["folders"] = len(all_folders)
                     batch_folders += 1
                 else:
-                    app_state["scan_progress"]["files"] += 1
                     parent_path = os.path.dirname(entry.path_lower)
                     
                     # Check if this is a system file that should be ignored
@@ -4320,8 +4319,10 @@ def scan_folder(folder_path):
                         folders_with_only_system_files.add(parent_path)
                         logger.debug(f"Ignoring system file: {entry.path_display}")
                     else:
+                        # Only count legitimate (non-ignored) files
+                        app_state["scan_progress"]["files"] += 1
                         folders_with_content.add(parent_path)
-                    batch_files += 1
+                        batch_files += 1
             
             # Update elapsed time and rate
             elapsed = time.time() - start_time
