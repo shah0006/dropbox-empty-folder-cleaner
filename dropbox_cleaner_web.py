@@ -15,6 +15,7 @@ import json
 import threading
 import webbrowser
 import time
+import logging
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import parse_qs, urlparse
 from collections import defaultdict
@@ -29,6 +30,35 @@ except ImportError:
     print("Error: dropbox package not installed.")
     print("Run: pip3 install dropbox python-dotenv")
     sys.exit(1)
+
+# Configure logging
+LOG_FORMAT = '%(asctime)s [%(levelname)s] %(message)s'
+LOG_DATE_FORMAT = '%Y-%m-%d %H:%M:%S'
+
+# Create logs directory if it doesn't exist
+os.makedirs('logs', exist_ok=True)
+
+# Set up file handler
+log_filename = f"logs/dropbox_cleaner_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+file_handler = logging.FileHandler(log_filename)
+file_handler.setLevel(logging.DEBUG)
+file_handler.setFormatter(logging.Formatter(LOG_FORMAT, LOG_DATE_FORMAT))
+
+# Set up console handler
+console_handler = logging.StreamHandler()
+console_handler.setLevel(logging.INFO)
+console_handler.setFormatter(logging.Formatter(LOG_FORMAT, LOG_DATE_FORMAT))
+
+# Configure root logger
+logger = logging.getLogger('DropboxCleaner')
+logger.setLevel(logging.DEBUG)
+logger.addHandler(file_handler)
+logger.addHandler(console_handler)
+
+logger.info("=" * 60)
+logger.info("Dropbox Empty Folder Cleaner - Starting")
+logger.info(f"Log file: {log_filename}")
+logger.info("=" * 60)
 
 # Global state
 app_state = {
@@ -1362,39 +1392,52 @@ class DropboxHandler(BaseHTTPRequestHandler):
         
         try:
             data = json.loads(body) if body else {}
-        except:
+        except Exception as e:
+            logger.warning(f"Failed to parse JSON body: {e}")
             data = {}
         
         if self.path == '/api/scan':
             folder = data.get('folder', '')
+            logger.info(f"API request: Start scan for folder '{folder if folder else '/'}'")
             threading.Thread(target=scan_folder, args=(folder,), daemon=True).start()
             self.send_json({"status": "started"})
         elif self.path == '/api/delete':
+            logger.info("API request: Start deletion")
             threading.Thread(target=delete_folders, daemon=True).start()
             self.send_json({"status": "started"})
         else:
+            logger.warning(f"Unknown API endpoint: {self.path}")
             self.send_response(404)
             self.end_headers()
 
 
 def connect_dropbox():
     """Connect to Dropbox."""
+    logger.info("Attempting to connect to Dropbox...")
     load_dotenv()
     
     app_key = os.getenv("DROPBOX_APP_KEY")
     app_secret = os.getenv("DROPBOX_APP_SECRET")
     refresh_token = os.getenv("DROPBOX_REFRESH_TOKEN")
     
+    logger.debug(f"App key present: {bool(app_key)}")
+    logger.debug(f"App secret present: {bool(app_secret)}")
+    logger.debug(f"Refresh token present: {bool(refresh_token)}")
+    
     if not all([app_key, app_secret, refresh_token]):
+        logger.error("Missing credentials in .env file")
         print("❌ Missing credentials in .env file")
         return False
     
     try:
+        logger.debug("Creating Dropbox client with OAuth2 refresh token...")
         dbx = dropbox.Dropbox(
             oauth2_refresh_token=refresh_token,
             app_key=app_key,
             app_secret=app_secret
         )
+        
+        logger.debug("Fetching account information...")
         account = dbx.users_get_current_account()
         
         app_state["dbx"] = dbx
@@ -1402,23 +1445,41 @@ def connect_dropbox():
         app_state["account_name"] = account.name.display_name
         app_state["account_email"] = account.email
         
+        logger.info(f"Successfully connected as: {account.name.display_name} ({account.email})")
+        
         # Load folders - include ALL folders (including conflict copies)
+        logger.debug("Loading root folders...")
         result = dbx.files_list_folder('')
         folders = [e.path_display for e in result.entries 
                   if isinstance(e, FolderMetadata)]
         folders.sort()
         app_state["folders"] = folders
         
+        logger.info(f"Found {len(folders)} root-level folders")
+        logger.debug(f"Root folders: {folders[:10]}{'...' if len(folders) > 10 else ''}")
+        
         print(f"✅ Connected as: {account.name.display_name}")
         return True
         
+    except AuthError as e:
+        logger.error(f"Authentication failed: {e}")
+        print(f"❌ Connection failed: {e}")
+        return False
+    except ApiError as e:
+        logger.error(f"Dropbox API error: {e}")
+        print(f"❌ Connection failed: {e}")
+        return False
     except Exception as e:
+        logger.exception(f"Unexpected error during connection: {e}")
         print(f"❌ Connection failed: {e}")
         return False
 
 
 def scan_folder(folder_path):
     """Scan a folder for empty folders."""
+    display_path = folder_path if folder_path else "/ (entire Dropbox)"
+    logger.info(f"Starting scan of: {display_path}")
+    
     start_time = time.time()
     app_state["scanning"] = True
     app_state["scan_progress"] = {
@@ -1435,20 +1496,28 @@ def scan_folder(folder_path):
     dbx = app_state["dbx"]
     all_folders = set()
     folders_with_content = set()
+    batch_count = 0
     
     try:
+        logger.debug(f"Calling files_list_folder with recursive=True for path: '{folder_path}'")
         result = dbx.files_list_folder(folder_path, recursive=True)
         
         while True:
+            batch_count += 1
+            batch_folders = 0
+            batch_files = 0
+            
             for entry in result.entries:
                 if isinstance(entry, FolderMetadata):
                     all_folders.add(entry.path_lower)
                     app_state["case_map"][entry.path_lower] = entry.path_display
                     app_state["scan_progress"]["folders"] = len(all_folders)
+                    batch_folders += 1
                 else:
                     app_state["scan_progress"]["files"] += 1
                     parent_path = os.path.dirname(entry.path_lower)
                     folders_with_content.add(parent_path)
+                    batch_files += 1
             
             # Update elapsed time and rate
             elapsed = time.time() - start_time
@@ -1456,7 +1525,10 @@ def scan_folder(folder_path):
             app_state["scan_progress"]["elapsed"] = elapsed
             app_state["scan_progress"]["rate"] = int(total_items / elapsed) if elapsed > 0 else 0
             
+            logger.debug(f"Batch {batch_count}: +{batch_folders} folders, +{batch_files} files | Total: {len(all_folders)} folders, {app_state['scan_progress']['files']} files")
+            
             if not result.has_more:
+                logger.debug("No more results, scan complete")
                 break
             
             result = dbx.files_list_folder_continue(result.cursor)
@@ -1467,20 +1539,37 @@ def scan_folder(folder_path):
         app_state["scan_progress"]["elapsed"] = elapsed
         app_state["scan_progress"]["rate"] = int(total_items / elapsed) if elapsed > 0 else 0
         
+        logger.info(f"Scan complete: {len(all_folders)} folders, {app_state['scan_progress']['files']} files in {elapsed:.2f}s ({batch_count} batches)")
+        
         # Find empty folders
+        logger.debug("Analyzing folder structure to find empty folders...")
         empty = find_empty_folders(all_folders, folders_with_content)
         app_state["empty_folders"] = empty
         app_state["scan_progress"]["status"] = "complete"
         
+        logger.info(f"Found {len(empty)} empty folder(s)")
+        if empty:
+            logger.debug(f"Empty folders: {[app_state['case_map'].get(f, f) for f in empty[:10]]}{'...' if len(empty) > 10 else ''}")
+        
+    except ApiError as e:
+        logger.error(f"Dropbox API error during scan: {e}")
+        logger.debug(f"API error details: {e.error if hasattr(e, 'error') else 'N/A'}")
+        print(f"Scan error: {e}")
+        app_state["scan_progress"]["status"] = "error"
     except Exception as e:
+        logger.exception(f"Unexpected error during scan: {e}")
         print(f"Scan error: {e}")
         app_state["scan_progress"]["status"] = "error"
     
     app_state["scanning"] = False
+    logger.debug("Scan thread finished")
 
 
 def find_empty_folders(all_folders, folders_with_content):
     """Find truly empty folders."""
+    logger.debug(f"Analyzing {len(all_folders)} folders, {len(folders_with_content)} have direct content")
+    
+    # Build parent-child relationships
     children = defaultdict(set)
     for folder in all_folders:
         parent = os.path.dirname(folder)
@@ -1489,6 +1578,7 @@ def find_empty_folders(all_folders, folders_with_content):
     
     has_content = set(folders_with_content)
     
+    # Propagate content markers upward
     for folder in folders_with_content:
         current = folder
         while current:
@@ -1498,9 +1588,12 @@ def find_empty_folders(all_folders, folders_with_content):
                 break
             current = parent
     
+    # Mark folders with non-empty children
+    iterations = 0
     changed = True
     while changed:
         changed = False
+        iterations += 1
         for folder in all_folders:
             if folder in has_content:
                 continue
@@ -1511,31 +1604,60 @@ def find_empty_folders(all_folders, folders_with_content):
                     break
     
     empty_folders = all_folders - has_content
-    return sorted(empty_folders, key=lambda x: x.count('/'), reverse=True)
+    sorted_empty = sorted(empty_folders, key=lambda x: x.count('/'), reverse=True)
+    
+    logger.debug(f"Analysis complete: {iterations} iterations, {len(sorted_empty)} empty folders found")
+    if sorted_empty:
+        max_depth = max(f.count('/') for f in sorted_empty)
+        min_depth = min(f.count('/') for f in sorted_empty)
+        logger.debug(f"Empty folder depths: min={min_depth}, max={max_depth}")
+    
+    return sorted_empty
 
 
 def delete_folders():
     """Delete empty folders."""
     total = len(app_state["empty_folders"])
+    logger.info(f"Starting deletion of {total} empty folder(s)")
+    logger.warning("⚠️  DELETION OPERATION INITIATED - folders will be moved to Dropbox trash")
+    
     app_state["deleting"] = True
     app_state["delete_progress"] = {"current": 0, "total": total, "status": "deleting", "percent": 0}
     
     dbx = app_state["dbx"]
+    deleted_count = 0
+    error_count = 0
+    start_time = time.time()
     
     for i, folder in enumerate(app_state["empty_folders"]):
+        display_path = app_state["case_map"].get(folder, folder)
         try:
+            logger.debug(f"Deleting [{i+1}/{total}]: {display_path}")
             dbx.files_delete_v2(folder)
+            deleted_count += 1
+            logger.info(f"✓ Deleted: {display_path}")
+        except ApiError as e:
+            error_count += 1
+            logger.error(f"✗ Failed to delete {display_path}: {e}")
+            print(f"Delete error for {folder}: {e}")
         except Exception as e:
+            error_count += 1
+            logger.exception(f"✗ Unexpected error deleting {display_path}: {e}")
             print(f"Delete error for {folder}: {e}")
         
         current = i + 1
         app_state["delete_progress"]["current"] = current
         app_state["delete_progress"]["percent"] = int((current / total) * 100) if total > 0 else 100
     
+    elapsed = time.time() - start_time
     app_state["empty_folders"] = []
     app_state["delete_progress"]["status"] = "complete"
     app_state["delete_progress"]["percent"] = 100
     app_state["deleting"] = False
+    
+    logger.info(f"Deletion complete: {deleted_count} deleted, {error_count} errors in {elapsed:.2f}s")
+    if error_count > 0:
+        logger.warning(f"⚠️  {error_count} folder(s) could not be deleted - check log for details")
 
 
 def main():
@@ -1546,25 +1668,38 @@ def main():
     print()
     
     if not connect_dropbox():
+        logger.error("Failed to connect to Dropbox - exiting")
         print("\nRun 'python3 dropbox_auth.py' to set up authentication.")
         sys.exit(1)
     
     port = 8765
-    server = HTTPServer(('127.0.0.1', port), DropboxHandler)
+    
+    try:
+        server = HTTPServer(('127.0.0.1', port), DropboxHandler)
+        logger.info(f"Web server started on http://127.0.0.1:{port}")
+    except OSError as e:
+        logger.error(f"Failed to start server on port {port}: {e}")
+        print(f"❌ Port {port} is already in use. Stop any existing server and try again.")
+        sys.exit(1)
     
     url = f"http://127.0.0.1:{port}"
     print(f"\n🌐 Starting web server at: {url}")
     print("   Opening browser...")
+    print(f"   Log file: logs/dropbox_cleaner_*.log")
     print("\n   Press Ctrl+C to stop the server.\n")
     
     # Open browser after short delay
     threading.Timer(0.5, lambda: webbrowser.open(url)).start()
     
     try:
+        logger.info("Server ready - waiting for requests")
         server.serve_forever()
     except KeyboardInterrupt:
+        logger.info("Server shutdown requested (Ctrl+C)")
         print("\n\n👋 Server stopped.")
         server.shutdown()
+    
+    logger.info("Application terminated")
 
 
 if __name__ == "__main__":

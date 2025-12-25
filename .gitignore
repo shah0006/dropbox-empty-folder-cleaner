@@ -12,6 +12,7 @@ venv/
 ENV/
 
 # Reports and logs
+logs/
 *.log
 *_report_*.txt
 dropbox_report_*.txt
