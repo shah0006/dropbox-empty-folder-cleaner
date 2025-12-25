@@ -1754,15 +1754,19 @@ HTML_PAGE = '''<!DOCTYPE html>
     
     <!-- Top Navigation -->
     <div class="top-nav">
+        <button type="button" class="nav-btn" id="settingsNavBtn" title="Configure Dropbox connection, system files, and more">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Settings</span>
+        </button>
         <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank" class="nav-btn" title="View source code and full documentation on GitHub">
             <span class="nav-icon">📚</span>
             <span class="nav-label">Docs</span>
         </a>
-        <button class="nav-btn" onclick="showHelp()" title="Open help documentation and usage guide">
+        <button type="button" class="nav-btn" id="helpNavBtn" title="Open help documentation and usage guide">
             <span class="nav-icon">❓</span>
             <span class="nav-label">Help</span>
         </button>
-        <button class="nav-btn" onclick="showDisclaimer()" title="View important disclaimer and terms of use">
+        <button type="button" class="nav-btn" id="disclaimerNavBtn" title="View important disclaimer and terms of use">
             <span class="nav-icon">⚠️</span>
             <span class="nav-label">Disclaimer</span>
         </button>
@@ -1823,7 +1827,7 @@ HTML_PAGE = '''<!DOCTYPE html>
                     <input type="checkbox" id="ignoreSystemFiles" checked onchange="updateConfig()">
                     <span class="toggle-text">Ignore system files (.DS_Store, Thumbs.db, etc.)</span>
                 </label>
-                <button class="btn-small" onclick="showSettings()" style="margin-left: auto;" 
+                <button class="btn-small" id="inlineSettingsBtn" style="margin-left: auto;" 
                         data-tooltip="Configure Dropbox connection, system files, exclusion patterns, and more"
                         data-tooltip-pos="bottom">⚙️ Settings</button>
             </div>
@@ -2748,8 +2752,8 @@ HTML_PAGE = '''<!DOCTYPE html>
                 .then(config => {
                     currentConfig = config;
                     document.getElementById('settingsIgnoreSystem').checked = config.ignore_system_files !== false;
-                    document.getElementById('systemFilesList').value = (config.system_files || []).join('\n');
-                    document.getElementById('excludePatternsList').value = (config.exclude_patterns || []).join('\n');
+                    document.getElementById('systemFilesList').value = (config.system_files || []).join('\\n');
+                    document.getElementById('excludePatternsList').value = (config.exclude_patterns || []).join('\\n');
                     document.getElementById('settingsPort').value = config.port || 8765;
                     document.getElementById('settingsExportFormat').value = config.export_format || 'json';
                     document.getElementById('settingsModal').classList.add('active');
@@ -2768,11 +2772,11 @@ HTML_PAGE = '''<!DOCTYPE html>
             const newConfig = {
                 ignore_system_files: document.getElementById('settingsIgnoreSystem').checked,
                 system_files: document.getElementById('systemFilesList').value
-                    .split('\n')
+                    .split('\\n')
                     .map(s => s.trim())
                     .filter(s => s.length > 0),
                 exclude_patterns: document.getElementById('excludePatternsList').value
-                    .split('\n')
+                    .split('\\n')
                     .map(s => s.trim())
                     .filter(s => s.length > 0),
                 port: parseInt(document.getElementById('settingsPort').value) || 8765,
@@ -2803,8 +2807,8 @@ HTML_PAGE = '''<!DOCTYPE html>
         function resetSettings() {
             if (confirm('Reset all settings to defaults?')) {
                 document.getElementById('settingsIgnoreSystem').checked = true;
-                document.getElementById('systemFilesList').value = '.DS_Store\nThumbs.db\ndesktop.ini\n.dropbox\n.dropbox.attr\nIcon\\r\n.localized';
-                document.getElementById('excludePatternsList').value = '.git\nnode_modules\n__pycache__\n.venv\n.env';
+                document.getElementById('systemFilesList').value = '.DS_Store\\nThumbs.db\\ndesktop.ini\\n.dropbox\\n.dropbox.attr\\nIcon\\r\\n.localized';
+                document.getElementById('excludePatternsList').value = '.git\\nnode_modules\\n__pycache__\\n.venv\\n.env';
                 document.getElementById('settingsPort').value = '8765';
                 document.getElementById('settingsExportFormat').value = 'json';
             }
@@ -2858,8 +2862,8 @@ HTML_PAGE = '''<!DOCTYPE html>
                 const configResponse = await fetch('/api/config');
                 const config = await configResponse.json();
                 document.getElementById('settingsIgnoreSystem').checked = config.ignore_system_files !== false;
-                document.getElementById('systemFilesList').value = (config.system_files || []).join('\n');
-                document.getElementById('excludePatternsList').value = (config.exclude_patterns || []).join('\n');
+                document.getElementById('systemFilesList').value = (config.system_files || []).join('\\n');
+                document.getElementById('excludePatternsList').value = (config.exclude_patterns || []).join('\\n');
                 document.getElementById('settingsPort').value = config.port || 8765;
                 document.getElementById('settingsExportFormat').value = config.export_format || 'json';
                 
@@ -3198,6 +3202,78 @@ HTML_PAGE = '''<!DOCTYPE html>
                 }, 500);
             }
         }
+        
+        // Direct function to open settings modal - defined before event listeners
+        window.openSettingsModal = async function() {
+            console.log('Opening settings modal...');
+            try {
+                // Load credentials
+                const credResponse = await fetch('/api/credentials');
+                const credData = await credResponse.json();
+                console.log('Credentials loaded:', credData.connected);
+                
+                document.getElementById('settingsAppKey').value = credData.app_key || '';
+                document.getElementById('settingsAppSecret').value = credData.app_secret || '';
+                document.getElementById('settingsRefreshToken').value = credData.refresh_token || '';
+                
+                // Update connection status in settings
+                const statusEl = document.getElementById('settingsConnectionStatus');
+                if (statusEl) {
+                    const indicator = statusEl.querySelector('.status-indicator');
+                    const info = document.getElementById('settingsAccountInfo');
+                    
+                    if (credData.connected) {
+                        indicator.className = 'status-indicator connected';
+                        info.textContent = 'Connected as ' + credData.account_name;
+                    } else {
+                        indicator.className = 'status-indicator disconnected';
+                        info.textContent = 'Not connected';
+                    }
+                }
+                
+                // Load config
+                const configResponse = await fetch('/api/config');
+                const config = await configResponse.json();
+                console.log('Config loaded');
+                
+                document.getElementById('settingsIgnoreSystem').checked = config.ignore_system_files !== false;
+                document.getElementById('systemFilesList').value = (config.system_files || []).join('\\n');
+                document.getElementById('excludePatternsList').value = (config.exclude_patterns || []).join('\\n');
+                document.getElementById('settingsPort').value = config.port || 8765;
+                document.getElementById('settingsExportFormat').value = config.export_format || 'json';
+                
+            } catch (e) {
+                console.error('Error loading settings data:', e);
+            }
+            
+            // Show the modal
+            console.log('Showing settings modal');
+            document.getElementById('settingsModal').classList.add('active');
+        };
+        
+        // Add event listeners for navigation buttons
+        document.getElementById('settingsNavBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Settings nav button clicked');
+            window.openSettingsModal();
+        });
+        
+        document.getElementById('helpNavBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            showHelp();
+        });
+        
+        document.getElementById('disclaimerNavBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            showDisclaimer();
+        });
+        
+        // Also add listener for inline settings button
+        document.getElementById('inlineSettingsBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            console.log('Inline settings button clicked');
+            window.openSettingsModal();
+        });
         
         // Start polling
         fetchStatus();
