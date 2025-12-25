@@ -2829,26 +2829,37 @@ HTML_PAGE = '''<!DOCTYPE html>
         
         async function loadCredentials() {
             try {
-                const response = await fetch('/api/credentials');
-                const data = await response.json();
-                document.getElementById('settingsAppKey').value = data.app_key || '';
-                document.getElementById('settingsAppSecret').value = data.app_secret || '';
-                document.getElementById('settingsRefreshToken').value = data.refresh_token || '';
+                // Load credentials
+                const credResponse = await fetch('/api/credentials');
+                const credData = await credResponse.json();
+                document.getElementById('settingsAppKey').value = credData.app_key || '';
+                document.getElementById('settingsAppSecret').value = credData.app_secret || '';
+                document.getElementById('settingsRefreshToken').value = credData.refresh_token || '';
                 
                 // Update connection status in settings
                 const statusEl = document.getElementById('settingsConnectionStatus');
                 const indicator = statusEl.querySelector('.status-indicator');
                 const info = document.getElementById('settingsAccountInfo');
                 
-                if (data.connected) {
+                if (credData.connected) {
                     indicator.className = 'status-indicator connected';
-                    info.textContent = `Connected as ${data.account_name}`;
+                    info.textContent = `Connected as ${credData.account_name}`;
                 } else {
                     indicator.className = 'status-indicator disconnected';
                     info.textContent = 'Not connected';
                 }
+                
+                // Also load config
+                const configResponse = await fetch('/api/config');
+                const config = await configResponse.json();
+                document.getElementById('settingsIgnoreSystem').checked = config.ignore_system_files !== false;
+                document.getElementById('systemFilesList').value = (config.system_files || []).join('\n');
+                document.getElementById('excludePatternsList').value = (config.exclude_patterns || []).join('\n');
+                document.getElementById('settingsPort').value = config.port || 8765;
+                document.getElementById('settingsExportFormat').value = config.export_format || 'json';
+                
             } catch (e) {
-                console.error('Failed to load credentials:', e);
+                console.error('Failed to load credentials/config:', e);
             }
         }
         
@@ -2949,8 +2960,15 @@ HTML_PAGE = '''<!DOCTYPE html>
         // Override showSettings to also load credentials
         const originalShowSettings = showSettings;
         showSettings = async function() {
-            await loadCredentials();
-            originalShowSettings();
+            try {
+                await loadCredentials();
+                // Show settings modal directly instead of calling original
+                document.getElementById('settingsModal').classList.add('active');
+            } catch (e) {
+                console.error('Error opening settings:', e);
+                // Still show the modal even if credentials fail to load
+                document.getElementById('settingsModal').classList.add('active');
+            }
         };
         
         // Override saveSettings to also save credentials
