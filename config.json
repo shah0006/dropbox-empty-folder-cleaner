@@ -1,0 +1,23 @@
+{
+  "ignore_system_files": true,
+  "system_files": [
+    ".DS_Store",
+    "Thumbs.db",
+    "desktop.ini",
+    ".dropbox",
+    ".dropbox.attr",
+    "Icon\r",
+    ".localized"
+  ],
+  "exclude_patterns": [
+    ".git",
+    "node_modules",
+    "__pycache__",
+    ".venv",
+    ".env"
+  ],
+  "export_format": "json",
+  "auto_open_browser": true,
+  "port": 8765
+}
+

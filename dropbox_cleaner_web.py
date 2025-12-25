@@ -60,6 +60,44 @@ logger.info("Dropbox Empty Folder Cleaner - Starting")
 logger.info(f"Log file: {log_filename}")
 logger.info("=" * 60)
 
+# Default configuration
+DEFAULT_CONFIG = {
+    "ignore_system_files": True,
+    "system_files": [
+        ".DS_Store", "Thumbs.db", "desktop.ini", ".dropbox", 
+        ".dropbox.attr", "Icon\r", ".localized"
+    ],
+    "exclude_patterns": [".git", "node_modules", "__pycache__", ".venv", ".env"],
+    "export_format": "json",
+    "auto_open_browser": True,
+    "port": 8765
+}
+
+def load_config():
+    """Load configuration from config.json."""
+    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    try:
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                logger.info(f"Loaded configuration from {config_path}")
+                # Merge with defaults
+                merged = {**DEFAULT_CONFIG, **config}
+                return merged
+    except Exception as e:
+        logger.warning(f"Could not load config.json: {e}, using defaults")
+    return DEFAULT_CONFIG.copy()
+
+def save_config(config):
+    """Save configuration to config.json."""
+    config_path = os.path.join(os.path.dirname(__file__), 'config.json')
+    try:
+        with open(config_path, 'w') as f:
+            json.dump(config, f, indent=2)
+        logger.info(f"Saved configuration to {config_path}")
+    except Exception as e:
+        logger.error(f"Could not save config.json: {e}")
+
 # Global state
 app_state = {
     "dbx": None,
@@ -72,7 +110,10 @@ app_state = {
     "empty_folders": [],
     "case_map": {},
     "deleting": False,
-    "delete_progress": {"current": 0, "total": 0, "status": "idle", "percent": 0}
+    "delete_progress": {"current": 0, "total": 0, "status": "idle", "percent": 0},
+    "config": load_config(),
+    "stats": {"depth_distribution": {}, "total_scanned": 0, "system_files_ignored": 0},
+    "last_scan_folder": ""
 }
 
 HTML_PAGE = '''<!DOCTYPE html>
@@ -889,6 +930,84 @@ HTML_PAGE = '''<!DOCTYPE html>
             font-size: 0.85em;
         }
         
+        /* Settings Toggle */
+        .settings-row {
+            display: flex;
+            align-items: center;
+        }
+        
+        .toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 0.85em;
+            color: var(--text-secondary);
+        }
+        
+        .toggle-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-cyan);
+            cursor: pointer;
+        }
+        
+        .toggle-text {
+            transition: color 0.2s ease;
+        }
+        
+        .toggle-label:hover .toggle-text {
+            color: var(--text-primary);
+        }
+        
+        /* Small buttons for export */
+        .btn-small {
+            padding: 4px 8px;
+            font-size: 0.7em;
+            font-weight: 500;
+            font-family: inherit;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .btn-small:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: var(--text-primary);
+            border-color: var(--accent-cyan);
+        }
+        
+        /* Statistics Panel */
+        .stats-panel {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .stats-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            font-size: 0.8em;
+            color: var(--text-secondary);
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .stat-item strong {
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        
         /* Footer - Compact */
         footer {
             text-align: center;
@@ -948,6 +1067,14 @@ HTML_PAGE = '''<!DOCTYPE html>
                 <button id="deleteBtn" class="btn btn-danger" onclick="confirmDelete()" disabled>
                     🗑️ Delete Empty Folders
                 </button>
+            </div>
+            
+            <!-- Settings Toggle -->
+            <div class="settings-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                <label class="toggle-label">
+                    <input type="checkbox" id="ignoreSystemFiles" checked onchange="updateConfig()">
+                    <span class="toggle-text">Ignore system files (.DS_Store, Thumbs.db, etc.)</span>
+                </label>
             </div>
         </div>
         
@@ -1010,8 +1137,22 @@ HTML_PAGE = '''<!DOCTYPE html>
         <div class="card" id="resultsCard" style="display: none;">
             <div class="results-header">
                 <span class="card-title-left">📋 Results</span>
-                <span id="resultsCount" class="results-count">0 empty folders</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span id="resultsCount" class="results-count">0 empty folders</span>
+                    <button class="btn-small" onclick="exportResults('json')" title="Export as JSON">📄 JSON</button>
+                    <button class="btn-small" onclick="exportResults('csv')" title="Export as CSV">📊 CSV</button>
+                </div>
             </div>
+            
+            <!-- Statistics Panel -->
+            <div id="statsPanel" class="stats-panel" style="display: none;">
+                <div class="stats-row">
+                    <span class="stat-item"><span class="stat-icon">📁</span> Scanned: <strong id="statScanned">0</strong></span>
+                    <span class="stat-item"><span class="stat-icon">🚫</span> System files ignored: <strong id="statIgnored">0</strong></span>
+                    <span class="stat-item"><span class="stat-icon">📊</span> Deepest: <strong id="statDeepest">0</strong> levels</span>
+                </div>
+            </div>
+            
             <div id="resultsList" class="results-list"></div>
             <div class="warning-box" id="warningBox" style="display: none;">
                 <span class="warning-icon">⚠️</span>
@@ -1066,9 +1207,13 @@ HTML_PAGE = '''<!DOCTYPE html>
             <h3>✨ Features</h3>
             <ul>
                 <li><strong>Smart Detection</strong> - Finds truly empty folders (no files, no non-empty subfolders)</li>
+                <li><strong>System File Ignore</strong> - Treats folders with only .DS_Store, Thumbs.db as empty (configurable)</li>
                 <li><strong>Safe Deletion</strong> - Deletes deepest folders first, then parents</li>
                 <li><strong>Real-time Progress</strong> - Live folder/file counts and elapsed time</li>
+                <li><strong>Export Results</strong> - Export to JSON or CSV for records/analysis</li>
+                <li><strong>Statistics</strong> - View depth distribution and scan metrics</li>
                 <li><strong>Trash Recovery</strong> - Deleted folders go to Dropbox trash (30 days)</li>
+                <li><strong>Configuration</strong> - Settings saved in config.json for customization</li>
             </ul>
             
             <h3>⚠️ Limitations</h3>
@@ -1261,6 +1406,9 @@ HTML_PAGE = '''<!DOCTYPE html>
                 }
             }
             
+            // Update config UI
+            updateConfigUI(data.config);
+            
             // Results
             if (data.empty_folders.length > 0 || data.scan_progress.status === 'complete') {
                 const resultsCard = document.getElementById('resultsCard');
@@ -1268,6 +1416,9 @@ HTML_PAGE = '''<!DOCTYPE html>
                 
                 emptyFolders = data.empty_folders;
                 document.getElementById('resultsCount').textContent = `${emptyFolders.length} empty folder(s)`;
+                
+                // Update statistics
+                updateStats(data.stats);
                 
                 const resultsList = document.getElementById('resultsList');
                 if (emptyFolders.length === 0) {
@@ -1334,6 +1485,42 @@ HTML_PAGE = '''<!DOCTYPE html>
             }
         }
         
+        async function updateConfig() {
+            const ignoreSystemFiles = document.getElementById('ignoreSystemFiles').checked;
+            try {
+                await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ignore_system_files: ignoreSystemFiles})
+                });
+            } catch (e) {
+                console.error('Failed to update config:', e);
+            }
+        }
+        
+        function exportResults(format) {
+            window.open(`/api/export?format=${format}`, '_blank');
+        }
+        
+        function updateStats(stats) {
+            const panel = document.getElementById('statsPanel');
+            if (stats && stats.total_scanned > 0) {
+                panel.style.display = 'block';
+                document.getElementById('statScanned').textContent = formatNumber(stats.total_scanned);
+                document.getElementById('statIgnored').textContent = formatNumber(stats.system_files_ignored || 0);
+                
+                const depths = Object.keys(stats.depth_distribution || {});
+                const maxDepth = depths.length > 0 ? Math.max(...depths.map(Number)) : 0;
+                document.getElementById('statDeepest').textContent = maxDepth;
+            }
+        }
+        
+        function updateConfigUI(config) {
+            if (config) {
+                document.getElementById('ignoreSystemFiles').checked = config.ignore_system_files !== false;
+            }
+        }
+        
         // Start polling
         fetchStatus();
         pollInterval = setInterval(fetchStatus, 400);
@@ -1379,11 +1566,60 @@ class DropboxHandler(BaseHTTPRequestHandler):
                 "scan_progress": app_state["scan_progress"],
                 "empty_folders": [app_state["case_map"].get(f, f) for f in app_state["empty_folders"]],
                 "deleting": app_state["deleting"],
-                "delete_progress": app_state["delete_progress"]
+                "delete_progress": app_state["delete_progress"],
+                "config": app_state["config"],
+                "stats": app_state["stats"]
             })
+        elif self.path == '/api/config':
+            self.send_json(app_state["config"])
+        elif self.path.startswith('/api/export'):
+            self.handle_export()
         else:
             self.send_response(404)
             self.end_headers()
+    
+    def handle_export(self):
+        """Handle export requests."""
+        query = urlparse(self.path).query
+        params = parse_qs(query)
+        export_format = params.get('format', ['json'])[0]
+        
+        empty_folders = [app_state["case_map"].get(f, f) for f in app_state["empty_folders"]]
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        if export_format == 'csv':
+            # CSV format
+            content = "Path,Depth\n"
+            for folder in empty_folders:
+                depth = folder.count('/')
+                content += f'"{folder}",{depth}\n'
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'text/csv')
+            self.send_header('Content-Disposition', f'attachment; filename="empty_folders_{timestamp}.csv"')
+            self.end_headers()
+            self.wfile.write(content.encode())
+        else:
+            # JSON format
+            export_data = {
+                "exported_at": datetime.now().isoformat(),
+                "scan_folder": app_state["last_scan_folder"] or "/",
+                "account": app_state["account_name"],
+                "total_empty_folders": len(empty_folders),
+                "stats": app_state["stats"],
+                "config_used": {
+                    "ignore_system_files": app_state["config"].get("ignore_system_files"),
+                    "system_files": app_state["config"].get("system_files"),
+                    "exclude_patterns": app_state["config"].get("exclude_patterns")
+                },
+                "empty_folders": [{"path": f, "depth": f.count('/')} for f in empty_folders]
+            }
+            
+            self.send_response(200)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Disposition', f'attachment; filename="empty_folders_{timestamp}.json"')
+            self.end_headers()
+            self.wfile.write(json.dumps(export_data, indent=2).encode())
     
     def do_POST(self):
         """Handle POST requests."""
@@ -1405,6 +1641,12 @@ class DropboxHandler(BaseHTTPRequestHandler):
             logger.info("API request: Start deletion")
             threading.Thread(target=delete_folders, daemon=True).start()
             self.send_json({"status": "started"})
+        elif self.path == '/api/config':
+            # Update configuration
+            logger.info(f"API request: Update config with {data}")
+            app_state["config"].update(data)
+            save_config(app_state["config"])
+            self.send_json({"status": "ok", "config": app_state["config"]})
         else:
             logger.warning(f"Unknown API endpoint: {self.path}")
             self.send_response(404)
@@ -1475,10 +1717,30 @@ def connect_dropbox():
         return False
 
 
+def is_system_file(filename):
+    """Check if a file is a system file that should be ignored."""
+    config = app_state["config"]
+    if not config.get("ignore_system_files", True):
+        return False
+    system_files = config.get("system_files", [])
+    return filename.lower() in [sf.lower() for sf in system_files] or filename in system_files
+
+def should_exclude_folder(folder_path):
+    """Check if a folder should be excluded based on patterns."""
+    config = app_state["config"]
+    exclude_patterns = config.get("exclude_patterns", [])
+    folder_name = os.path.basename(folder_path)
+    return folder_name.lower() in [p.lower() for p in exclude_patterns]
+
 def scan_folder(folder_path):
     """Scan a folder for empty folders."""
     display_path = folder_path if folder_path else "/ (entire Dropbox)"
     logger.info(f"Starting scan of: {display_path}")
+    
+    config = app_state["config"]
+    logger.info(f"Ignore system files: {config.get('ignore_system_files', True)}")
+    logger.info(f"System files: {config.get('system_files', [])}")
+    logger.info(f"Exclude patterns: {config.get('exclude_patterns', [])}")
     
     start_time = time.time()
     app_state["scanning"] = True
@@ -1492,11 +1754,16 @@ def scan_folder(folder_path):
     }
     app_state["empty_folders"] = []
     app_state["case_map"] = {}
+    app_state["last_scan_folder"] = folder_path
+    app_state["stats"] = {"depth_distribution": {}, "total_scanned": 0, "system_files_ignored": 0, "excluded_folders": 0}
     
     dbx = app_state["dbx"]
     all_folders = set()
     folders_with_content = set()
+    folders_with_only_system_files = set()  # Track folders with only system files
     batch_count = 0
+    system_files_ignored = 0
+    excluded_folders = 0
     
     try:
         logger.debug(f"Calling files_list_folder with recursive=True for path: '{folder_path}'")
@@ -1509,6 +1776,12 @@ def scan_folder(folder_path):
             
             for entry in result.entries:
                 if isinstance(entry, FolderMetadata):
+                    # Check if folder should be excluded
+                    if should_exclude_folder(entry.path_display):
+                        excluded_folders += 1
+                        logger.debug(f"Excluding folder (pattern match): {entry.path_display}")
+                        continue
+                    
                     all_folders.add(entry.path_lower)
                     app_state["case_map"][entry.path_lower] = entry.path_display
                     app_state["scan_progress"]["folders"] = len(all_folders)
@@ -1516,7 +1789,15 @@ def scan_folder(folder_path):
                 else:
                     app_state["scan_progress"]["files"] += 1
                     parent_path = os.path.dirname(entry.path_lower)
-                    folders_with_content.add(parent_path)
+                    
+                    # Check if this is a system file that should be ignored
+                    filename = os.path.basename(entry.path_display)
+                    if is_system_file(filename):
+                        system_files_ignored += 1
+                        folders_with_only_system_files.add(parent_path)
+                        logger.debug(f"Ignoring system file: {entry.path_display}")
+                    else:
+                        folders_with_content.add(parent_path)
                     batch_files += 1
             
             # Update elapsed time and rate
@@ -1539,17 +1820,31 @@ def scan_folder(folder_path):
         app_state["scan_progress"]["elapsed"] = elapsed
         app_state["scan_progress"]["rate"] = int(total_items / elapsed) if elapsed > 0 else 0
         
-        logger.info(f"Scan complete: {len(all_folders)} folders, {app_state['scan_progress']['files']} files in {elapsed:.2f}s ({batch_count} batches)")
+        # Update stats
+        app_state["stats"]["total_scanned"] = len(all_folders)
+        app_state["stats"]["system_files_ignored"] = system_files_ignored
+        app_state["stats"]["excluded_folders"] = excluded_folders
         
-        # Find empty folders
+        logger.info(f"Scan complete: {len(all_folders)} folders, {app_state['scan_progress']['files']} files in {elapsed:.2f}s ({batch_count} batches)")
+        logger.info(f"System files ignored: {system_files_ignored}, Excluded folders: {excluded_folders}")
+        
+        # Find empty folders (folders with only system files are considered empty)
         logger.debug("Analyzing folder structure to find empty folders...")
         empty = find_empty_folders(all_folders, folders_with_content)
         app_state["empty_folders"] = empty
         app_state["scan_progress"]["status"] = "complete"
         
+        # Calculate depth distribution
+        depth_dist = {}
+        for folder in empty:
+            depth = folder.count('/')
+            depth_dist[depth] = depth_dist.get(depth, 0) + 1
+        app_state["stats"]["depth_distribution"] = depth_dist
+        
         logger.info(f"Found {len(empty)} empty folder(s)")
         if empty:
             logger.debug(f"Empty folders: {[app_state['case_map'].get(f, f) for f in empty[:10]]}{'...' if len(empty) > 10 else ''}")
+            logger.info(f"Depth distribution: {depth_dist}")
         
     except ApiError as e:
         logger.error(f"Dropbox API error during scan: {e}")

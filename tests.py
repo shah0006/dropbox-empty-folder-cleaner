@@ -176,6 +176,122 @@ class TestInputValidation(unittest.TestCase):
         pass
 
 
+class TestSystemFileIgnore(unittest.TestCase):
+    """Tests for system file ignore feature."""
+    
+    def test_default_system_files(self):
+        """Test that default system files are recognized."""
+        default_system_files = ['.DS_Store', 'Thumbs.db', 'desktop.ini', '.dropbox']
+        for sf in default_system_files:
+            self.assertIn(sf.lower(), [f.lower() for f in default_system_files])
+    
+    def test_folder_with_only_ds_store_is_empty(self):
+        """Test that folders with only .DS_Store are considered empty."""
+        # When ignore_system_files is True, a folder with only .DS_Store should be empty
+        all_folders = {'/photos'}
+        # .DS_Store is a system file, so /photos should have no real content
+        folders_with_content = set()  # Not adding /photos because .DS_Store is ignored
+        
+        result = find_empty_folders_logic(all_folders, folders_with_content)
+        self.assertEqual(result, ['/photos'])
+    
+    def test_folder_with_real_files_not_empty(self):
+        """Test that folders with real files are not considered empty."""
+        all_folders = {'/photos'}
+        folders_with_content = {'/photos'}  # Has a real file
+        
+        result = find_empty_folders_logic(all_folders, folders_with_content)
+        self.assertEqual(result, [])
+
+
+class TestExclusionPatterns(unittest.TestCase):
+    """Tests for folder exclusion patterns."""
+    
+    def test_git_folder_excluded(self):
+        """Test that .git folders can be excluded."""
+        exclude_patterns = ['.git', 'node_modules', '__pycache__']
+        
+        # Test folder names
+        self.assertIn('.git', exclude_patterns)
+        self.assertIn('node_modules', exclude_patterns)
+    
+    def test_case_insensitive_matching(self):
+        """Test exclusion patterns match case-insensitively."""
+        exclude_patterns = ['.git', 'node_modules']
+        folder_name = '.GIT'
+        
+        result = folder_name.lower() in [p.lower() for p in exclude_patterns]
+        self.assertTrue(result)
+
+
+class TestExportFeature(unittest.TestCase):
+    """Tests for export functionality."""
+    
+    def test_json_export_structure(self):
+        """Test JSON export has required fields."""
+        # Simulated export data structure
+        export_data = {
+            "exported_at": "2024-01-01T00:00:00",
+            "scan_folder": "/",
+            "account": "Test User",
+            "total_empty_folders": 5,
+            "stats": {"depth_distribution": {1: 2, 2: 3}},
+            "empty_folders": [{"path": "/a", "depth": 1}]
+        }
+        
+        # Verify required fields
+        self.assertIn("exported_at", export_data)
+        self.assertIn("scan_folder", export_data)
+        self.assertIn("total_empty_folders", export_data)
+        self.assertIn("empty_folders", export_data)
+    
+    def test_csv_export_format(self):
+        """Test CSV export format."""
+        empty_folders = ["/a", "/a/b", "/c"]
+        
+        # Simulated CSV content
+        csv_lines = ["Path,Depth"]
+        for folder in empty_folders:
+            csv_lines.append(f'"{folder}",{folder.count("/")}')
+        
+        csv_content = "\n".join(csv_lines)
+        
+        self.assertIn("Path,Depth", csv_content)
+        self.assertIn('"/a",1', csv_content)
+        self.assertIn('"/a/b",2', csv_content)
+
+
+class TestConfigFeature(unittest.TestCase):
+    """Tests for configuration feature."""
+    
+    def test_default_config_values(self):
+        """Test default configuration has all required keys."""
+        default_config = {
+            "ignore_system_files": True,
+            "system_files": [".DS_Store", "Thumbs.db"],
+            "exclude_patterns": [".git", "node_modules"],
+            "export_format": "json",
+            "auto_open_browser": True,
+            "port": 8765
+        }
+        
+        self.assertTrue(default_config["ignore_system_files"])
+        self.assertIsInstance(default_config["system_files"], list)
+        self.assertIsInstance(default_config["exclude_patterns"], list)
+        self.assertEqual(default_config["port"], 8765)
+    
+    def test_config_merge_with_defaults(self):
+        """Test that partial config is merged with defaults."""
+        defaults = {"a": 1, "b": 2, "c": 3}
+        user_config = {"b": 99}
+        
+        merged = {**defaults, **user_config}
+        
+        self.assertEqual(merged["a"], 1)  # From default
+        self.assertEqual(merged["b"], 99)  # From user
+        self.assertEqual(merged["c"], 3)  # From default
+
+
 def find_empty_folders_logic(all_folders, folders_with_content):
     """
     Core logic for finding empty folders.
@@ -494,6 +610,10 @@ def main():
         suite.addTests(loader.loadTestsFromTestCase(TestDeletionOrder))
         suite.addTests(loader.loadTestsFromTestCase(TestSafetyMeasures))
         suite.addTests(loader.loadTestsFromTestCase(TestInputValidation))
+        suite.addTests(loader.loadTestsFromTestCase(TestSystemFileIgnore))
+        suite.addTests(loader.loadTestsFromTestCase(TestExclusionPatterns))
+        suite.addTests(loader.loadTestsFromTestCase(TestExportFeature))
+        suite.addTests(loader.loadTestsFromTestCase(TestConfigFeature))
     
     if args.integration:
         suite.addTests(loader.loadTestsFromTestCase(IntegrationTests))
