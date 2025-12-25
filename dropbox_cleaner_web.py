@@ -1942,7 +1942,7 @@ HTML_PAGE = '''<!DOCTYPE html>
                 </div>
                 <div class="folder-tree-container" id="folderTreeContainer">
                     <div class="folder-tree" id="folderTree">
-                        <div class="tree-item root-item selected" data-path="" onclick="selectFolder(this, '')">
+                        <div class="tree-item root-item selected" data-path="">
                             <span class="tree-icon">🏠</span>
                             <span class="tree-label">/ (Entire Dropbox)</span>
                         </div>
@@ -2612,6 +2612,8 @@ HTML_PAGE = '''<!DOCTYPE html>
         
         // Folder Tree Functions
         function selectFolder(element, path) {
+            console.log('selectFolder called with path:', path);
+            
             // Remove selected class from all items
             document.querySelectorAll('.tree-item.selected').forEach(el => {
                 el.classList.remove('selected');
@@ -2624,12 +2626,43 @@ HTML_PAGE = '''<!DOCTYPE html>
             selectedFolderPath = path;
             document.getElementById('folderSelect').value = path;
             document.getElementById('selectedPath').textContent = path || '/ (Entire Dropbox)';
+            
+            console.log('selectedFolderPath is now:', selectedFolderPath);
         }
         
-        async function toggleFolder(event, element, path) {
-            event.stopPropagation();
-            
-            const childrenContainer = element.parentElement.querySelector('.tree-children');
+        // Event delegation for tree clicks (runs immediately since script is at end of body)
+        (function() {
+            const treeContainer = document.getElementById('folderTreeContainer');
+            if (treeContainer) {
+                treeContainer.addEventListener('click', function(event) {
+                    const target = event.target;
+                    
+                    // Check if expand arrow was clicked
+                    if (target.classList.contains('tree-expand')) {
+                        event.stopPropagation();
+                        const treeItem = target.closest('.tree-item');
+                        if (treeItem) {
+                            const path = treeItem.dataset.path;
+                            console.log('Expand clicked, path:', path);
+                            toggleFolderExpand(treeItem, path);
+                        }
+                        return;
+                    }
+                    
+                    // Check if a tree item was clicked (but not the expand icon)
+                    const treeItem = target.closest('.tree-item');
+                    if (treeItem) {
+                        const path = treeItem.dataset.path;
+                        console.log('Tree item clicked, path:', path);
+                        selectFolder(treeItem, path);
+                    }
+                });
+            }
+        })();
+        
+        async function toggleFolderExpand(element, path) {
+            const wrapper = element.closest('.tree-item-wrapper') || element.parentElement;
+            const childrenContainer = wrapper.querySelector('.tree-children');
             const expandIcon = element.querySelector('.tree-expand');
             
             if (!childrenContainer) return;
@@ -2637,30 +2670,34 @@ HTML_PAGE = '''<!DOCTYPE html>
             // If already expanded, collapse
             if (!childrenContainer.classList.contains('collapsed')) {
                 childrenContainer.classList.add('collapsed');
-                expandIcon.classList.remove('expanded');
+                if (expandIcon) expandIcon.classList.remove('expanded');
                 return;
             }
             
             // If not loaded yet, load subfolders
             if (!loadedFolders.has(path)) {
-                expandIcon.classList.add('loading');
-                expandIcon.textContent = '⟳';
+                if (expandIcon) {
+                    expandIcon.classList.add('loading');
+                    expandIcon.textContent = '⟳';
+                }
                 
                 try {
                     const response = await fetch('/api/subfolders?path=' + encodeURIComponent(path));
                     const data = await response.json();
                     
                     if (data.subfolders && data.subfolders.length > 0) {
-                        childrenContainer.innerHTML = data.subfolders.map(folder => `
+                        childrenContainer.innerHTML = data.subfolders.map(folder => {
+                            const escapedPath = folder.path.replace(/"/g, '&quot;');
+                            return `
                             <div class="tree-item-wrapper">
-                                <div class="tree-item" data-path="${folder.path}" onclick="selectFolder(this, '${folder.path.replace(/'/g, "\\'")}')">
-                                    <span class="tree-expand" onclick="toggleFolder(event, this.parentElement, '${folder.path.replace(/'/g, "\\'")}')">▶</span>
+                                <div class="tree-item" data-path="${escapedPath}">
+                                    <span class="tree-expand">▶</span>
                                     <span class="tree-icon">📁</span>
                                     <span class="tree-label">${folder.name}</span>
                                 </div>
                                 <div class="tree-children collapsed"></div>
                             </div>
-                        `).join('');
+                        `}).join('');
                     } else {
                         childrenContainer.innerHTML = '<div class="tree-empty">No subfolders</div>';
                     }
@@ -2671,8 +2708,10 @@ HTML_PAGE = '''<!DOCTYPE html>
                     childrenContainer.innerHTML = '<div class="tree-empty">Error loading folders</div>';
                 }
                 
-                expandIcon.classList.remove('loading');
-                expandIcon.textContent = '▶';
+                if (expandIcon) {
+                    expandIcon.classList.remove('loading');
+                    expandIcon.textContent = '▶';
+                }
             }
             
             // Expand
@@ -2688,16 +2727,18 @@ HTML_PAGE = '''<!DOCTYPE html>
                 const data = await response.json();
                 
                 if (data.subfolders && data.subfolders.length > 0) {
-                    container.innerHTML = data.subfolders.map(folder => `
+                    container.innerHTML = data.subfolders.map(folder => {
+                        const escapedPath = folder.path.replace(/"/g, '&quot;');
+                        return `
                         <div class="tree-item-wrapper">
-                            <div class="tree-item" data-path="${folder.path}" onclick="selectFolder(this, '${folder.path.replace(/'/g, "\\'")}')">
-                                <span class="tree-expand" onclick="toggleFolder(event, this.parentElement, '${folder.path.replace(/'/g, "\\'")}')">▶</span>
+                            <div class="tree-item" data-path="${escapedPath}">
+                                <span class="tree-expand">▶</span>
                                 <span class="tree-icon">📁</span>
                                 <span class="tree-label">${folder.name}</span>
                             </div>
                             <div class="tree-children collapsed"></div>
                         </div>
-                    `).join('');
+                    `}).join('');
                 } else {
                     container.innerHTML = '<div class="tree-empty">No folders found</div>';
                 }
@@ -2759,17 +2800,8 @@ HTML_PAGE = '''<!DOCTYPE html>
                 setupPrompt.style.display = 'block';
             }
             
-            // Folders dropdown
-            const folderSelect = document.getElementById('folderSelect');
-            if (data.folders.length > 0 && folderSelect.options.length <= 1) {
-                folderSelect.innerHTML = '<option value="">/ (Entire Dropbox)</option>';
-                data.folders.forEach(folder => {
-                    const option = document.createElement('option');
-                    option.value = folder;
-                    option.textContent = folder;
-                    folderSelect.appendChild(option);
-                });
-            }
+            // Folder tree is loaded separately via loadRootFolders()
+            // No need to populate dropdown anymore since we use tree view
             
             // Progress
             const progressCard = document.getElementById('progressCard');
@@ -2911,15 +2943,19 @@ HTML_PAGE = '''<!DOCTYPE html>
         
         async function startScan() {
             const folder = selectedFolderPath; // Use tree selection
+            console.log('startScan called, folder:', folder);
+            
             document.getElementById('resultsCard').style.display = 'none';
             document.getElementById('emptyStatCard').style.display = 'none';
             
             try {
-                await fetch('/api/scan', {
+                const response = await fetch('/api/scan', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({folder: folder})
                 });
+                const result = await response.json();
+                console.log('Scan API response:', result);
             } catch (e) {
                 console.error('Failed to start scan:', e);
             }
