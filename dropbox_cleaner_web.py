@@ -2040,6 +2040,12 @@ HTML_PAGE = '''<!DOCTYPE html>
         <div class="card">
             <div class="card-title">
                 <span class="card-title-left">📂 Select Folder to Scan</span>
+                <button class="btn btn-small" onclick="manualRefreshTree()" 
+                        data-tooltip="Refresh folder tree from Dropbox" 
+                        data-tooltip-pos="left"
+                        style="font-size: 0.75em; padding: 4px 8px;">
+                    🔄 Refresh
+                </button>
             </div>
             <div class="folder-browser">
                 <div class="selected-folder" id="selectedFolderDisplay" 
@@ -2925,7 +2931,9 @@ HTML_PAGE = '''<!DOCTYPE html>
         
         // Refresh folder tree after deletions (preserving expanded state)
         async function refreshFolderTree() {
-            console.log('Refreshing folder tree...');
+            console.log('========================================');
+            console.log('REFRESH FOLDER TREE STARTING');
+            console.log('========================================');
             
             // Save currently expanded paths and selected path
             const expandedPaths = getExpandedPaths();
@@ -2933,16 +2941,32 @@ HTML_PAGE = '''<!DOCTYPE html>
             console.log('Preserving expanded paths:', expandedPaths);
             console.log('Preserving selection:', previousSelection);
             
-            // Clear the cache of loaded folders
+            // Clear ALL caches
             loadedFolders.clear();
+            console.log('Cleared loadedFolders cache');
             
-            // Reload root folders
+            // Force reload root folders from Dropbox
+            console.log('Calling loadRootFolders...');
             await loadRootFolders();
+            console.log('loadRootFolders completed');
             
             // Re-expand previously expanded folders (in order from root to deep)
             // Sort by depth (number of slashes) to expand parents before children
             expandedPaths.sort((a, b) => (a.match(/\//g) || []).length - (b.match(/\//g) || []).length);
-            await expandToPaths(expandedPaths);
+            console.log('About to re-expand paths:', expandedPaths);
+            
+            for (const path of expandedPaths) {
+                if (path === '') continue;
+                console.log('Re-expanding path:', path);
+                const escapedPath = path.replace(/"/g, '\\"');
+                const treeItem = document.querySelector('.tree-item[data-path="' + escapedPath + '"]');
+                if (treeItem) {
+                    console.log('Found tree item for:', path);
+                    await toggleFolderExpand(treeItem, path);
+                } else {
+                    console.log('Tree item NOT found for (may have been deleted):', path);
+                }
+            }
             
             // Try to re-select the previously selected folder
             if (previousSelection) {
@@ -2963,7 +2987,16 @@ HTML_PAGE = '''<!DOCTYPE html>
                     if (rootItem) rootItem.classList.add('selected');
                 }
             }
+            console.log('========================================');
+            console.log('REFRESH FOLDER TREE COMPLETE');
+            console.log('========================================');
         }
+        
+        // Manual refresh button handler
+        window.manualRefreshTree = async function() {
+            console.log('Manual tree refresh triggered');
+            await refreshFolderTree();
+        };
         
         // Track if we've already refreshed after last deletion
         let lastDeleteRefreshed = false;
@@ -3131,13 +3164,22 @@ HTML_PAGE = '''<!DOCTYPE html>
                     // Refresh folder tree after deletion (only once)
                     if (!lastDeleteRefreshed) {
                         lastDeleteRefreshed = true;
-                        console.log('Deletion complete - triggering folder tree refresh');
+                        console.log('*************************************************');
+                        console.log('DELETION COMPLETE - TRIGGERING TREE REFRESH');
+                        console.log('*************************************************');
+                        
+                        // Small delay to ensure backend has finished
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        
                         await refreshFolderTree();
-                        console.log('Folder tree refresh complete');
+                        console.log('*************************************************');
+                        console.log('TREE REFRESH AFTER DELETION COMPLETE');
+                        console.log('*************************************************');
                     }
                 } else if (data.deleting) {
                     // Reset flag when new deletion starts
                     lastDeleteRefreshed = false;
+                    console.log('Deletion started - refresh flag reset');
                 }
             }
             
