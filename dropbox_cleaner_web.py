@@ -3809,35 +3809,94 @@ def find_empty_folders(all_folders, folders_with_content):
     return sorted_empty
 
 
+def verify_folder_empty(dbx, folder_path):
+    """
+    FAIL-SAFE: Independently verify a folder is truly empty before deletion.
+    Makes a direct API call to check for any files in the folder's subtree.
+    Returns: (is_empty: bool, file_count: int, error: str or None)
+    """
+    try:
+        result = dbx.files_list_folder(folder_path, recursive=True)
+        file_count = 0
+        
+        while True:
+            for entry in result.entries:
+                if isinstance(entry, dropbox.files.FileMetadata):
+                    file_count += 1
+                    # Found a file - no need to continue
+                    if file_count > 0:
+                        return False, file_count, None
+            
+            if not result.has_more:
+                break
+            result = dbx.files_list_folder_continue(result.cursor)
+        
+        return file_count == 0, file_count, None
+        
+    except ApiError as e:
+        if hasattr(e.error, 'is_path') and e.error.is_path():
+            # Folder doesn't exist - might have been deleted already
+            return True, 0, "folder_not_found"
+        return False, 0, str(e)
+    except Exception as e:
+        return False, 0, str(e)
+
+
 def delete_folders():
-    """Delete empty folders."""
+    """Delete empty folders with fail-safe verification before each deletion."""
     total = len(app_state["empty_folders"])
     logger.info(f"Starting deletion of {total} empty folder(s)")
     logger.warning("⚠️  DELETION OPERATION INITIATED - folders will be moved to Dropbox trash")
+    logger.info("🛡️  FAIL-SAFE ENABLED: Each folder will be re-verified before deletion")
     
     app_state["deleting"] = True
     app_state["delete_progress"] = {"current": 0, "total": total, "status": "deleting", "percent": 0}
     
     dbx = app_state["dbx"]
     deleted_count = 0
+    skipped_count = 0  # Folders skipped because they're no longer empty
     error_count = 0
     start_time = time.time()
     
     for i, folder in enumerate(app_state["empty_folders"]):
         display_path = app_state["case_map"].get(folder, folder)
-        try:
-            logger.debug(f"Deleting [{i+1}/{total}]: {display_path}")
-            dbx.files_delete_v2(folder)
-            deleted_count += 1
-            logger.info(f"✓ Deleted: {display_path}")
-        except ApiError as e:
+        
+        # FAIL-SAFE: Verify folder is still empty before deleting
+        logger.debug(f"Verifying [{i+1}/{total}]: {display_path}")
+        is_empty, file_count, error = verify_folder_empty(dbx, folder)
+        
+        if error == "folder_not_found":
+            # Folder already deleted (possibly parent was deleted)
+            logger.debug(f"⊘ Already gone: {display_path}")
+            deleted_count += 1  # Count as success
+        elif error:
+            # Verification failed - skip this folder for safety
             error_count += 1
-            logger.error(f"✗ Failed to delete {display_path}: {e}")
-            print(f"Delete error for {folder}: {e}")
-        except Exception as e:
-            error_count += 1
-            logger.exception(f"✗ Unexpected error deleting {display_path}: {e}")
-            print(f"Delete error for {folder}: {e}")
+            logger.error(f"✗ Verification failed for {display_path}: {error}")
+            logger.warning(f"  SKIPPED deletion for safety")
+        elif not is_empty:
+            # FAIL-SAFE TRIGGERED: Folder has files now!
+            skipped_count += 1
+            logger.warning(f"🛡️  FAIL-SAFE: {display_path} is NO LONGER EMPTY!")
+            logger.warning(f"   Found {file_count} file(s) - SKIPPING deletion")
+        else:
+            # Verified empty - safe to delete
+            try:
+                logger.debug(f"Deleting [{i+1}/{total}]: {display_path}")
+                dbx.files_delete_v2(folder)
+                deleted_count += 1
+                logger.info(f"✓ Deleted: {display_path}")
+            except ApiError as e:
+                if 'not_found' in str(e).lower():
+                    # Already deleted
+                    deleted_count += 1
+                    logger.debug(f"⊘ Already deleted: {display_path}")
+                else:
+                    error_count += 1
+                    logger.error(f"✗ Failed to delete {display_path}: {e}")
+            except Exception as e:
+                error_count += 1
+                logger.exception(f"✗ Unexpected error deleting {display_path}: {e}")
         
         current = i + 1
         app_state["delete_progress"]["current"] = current
@@ -3849,9 +3908,21 @@ def delete_folders():
     app_state["delete_progress"]["percent"] = 100
     app_state["deleting"] = False
     
-    logger.info(f"Deletion complete: {deleted_count} deleted, {error_count} errors in {elapsed:.2f}s")
+    # Detailed completion log
+    logger.info(f"=" * 60)
+    logger.info(f"DELETION COMPLETE")
+    logger.info(f"=" * 60)
+    logger.info(f"  ✓ Successfully deleted: {deleted_count}")
+    logger.info(f"  🛡️  Skipped (fail-safe): {skipped_count}")
+    logger.info(f"  ✗ Errors: {error_count}")
+    logger.info(f"  ⏱️  Time: {elapsed:.2f}s")
+    logger.info(f"=" * 60)
+    
+    if skipped_count > 0:
+        logger.warning(f"⚠️  {skipped_count} folder(s) were SKIPPED because they gained files since the scan")
+        logger.warning(f"   Run a new scan to see updated results")
     if error_count > 0:
-        logger.warning(f"⚠️  {error_count} folder(s) could not be deleted - check log for details")
+        logger.warning(f"⚠️  {error_count} folder(s) had errors - check log for details")
 
 
 def main():
