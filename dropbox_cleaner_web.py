@@ -2462,7 +2462,12 @@ HTML_PAGE = '''<!DOCTYPE html>
         async function fetchStatus() {
             try {
                 const response = await fetch('/api/status');
+                if (!response.ok) {
+                    console.error('Status response not OK:', response.status);
+                    return;
+                }
                 const data = await response.json();
+                console.log('Status update - connected:', data.connected);
                 updateUI(data);
             } catch (e) {
                 console.error('Failed to fetch status:', e);
@@ -3228,6 +3233,9 @@ class DropboxHandler(BaseHTTPRequestHandler):
         """Send HTML response."""
         self.send_response(200)
         self.send_header('Content-Type', 'text/html')
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Expires', '0')
         self.end_headers()
         self.wfile.write(html.encode())
     
