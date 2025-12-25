@@ -3097,7 +3097,9 @@ HTML_PAGE = '''<!DOCTYPE html>
                     // Refresh folder tree after scan (only once)
                     if (!lastScanRefreshed) {
                         lastScanRefreshed = true;
-                        refreshFolderTree();
+                        console.log('Scan complete - triggering folder tree refresh');
+                        await refreshFolderTree();
+                        console.log('Folder tree refresh complete');
                     }
                     
                     // Show empty count stat
@@ -3112,7 +3114,9 @@ HTML_PAGE = '''<!DOCTYPE html>
                     // Refresh folder tree after deletion (only once)
                     if (!lastDeleteRefreshed) {
                         lastDeleteRefreshed = true;
-                        refreshFolderTree();
+                        console.log('Deletion complete - triggering folder tree refresh');
+                        await refreshFolderTree();
+                        console.log('Folder tree refresh complete');
                     }
                 } else if (data.deleting) {
                     // Reset flag when new deletion starts
