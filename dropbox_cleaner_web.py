@@ -838,6 +838,26 @@ HTML_PAGE = '''<!DOCTYPE html>
             transform: translateY(-2px);
         }
         
+        .delete-warning-box {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            padding: 14px;
+            margin: 16px 0;
+            text-align: left;
+            color: var(--accent-red);
+        }
+        
+        .delete-warning-box ul {
+            margin: 8px 0 0 0;
+            padding-left: 20px;
+            font-size: 0.9em;
+        }
+        
+        .delete-warning-box li {
+            margin-bottom: 4px;
+        }
+        
         /* Help Button */
         .help-btn {
             position: fixed;
@@ -1502,12 +1522,96 @@ HTML_PAGE = '''<!DOCTYPE html>
             color: var(--accent-green);
         }
         
-        /* Footer - Compact */
+        /* Disclaimer Modal */
+        .disclaimer-modal {
+            max-width: 600px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        
+        .disclaimer-modal h2 {
+            color: var(--accent-orange);
+            margin-bottom: 16px;
+        }
+        
+        .disclaimer-content {
+            text-align: left;
+        }
+        
+        .disclaimer-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 14px;
+            margin: 12px 0;
+            border-left: 3px solid var(--border-color);
+        }
+        
+        .disclaimer-section.warning {
+            background: rgba(239, 68, 68, 0.1);
+            border-left-color: var(--accent-red);
+        }
+        
+        .disclaimer-section.warning h3 {
+            color: var(--accent-red);
+        }
+        
+        .disclaimer-section.legal {
+            background: rgba(168, 85, 247, 0.1);
+            border-left-color: var(--accent-purple);
+        }
+        
+        .disclaimer-section h3 {
+            color: var(--accent-cyan);
+            font-size: 0.95em;
+            margin-bottom: 10px;
+        }
+        
+        .disclaimer-section p {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            line-height: 1.6;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+        
+        .disclaimer-section ul {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+        
+        .disclaimer-section li {
+            margin-bottom: 6px;
+            line-height: 1.5;
+        }
+        
+        /* Footer - Compact with Disclaimer */
         footer {
             text-align: center;
             padding: 16px 10px;
             color: var(--text-secondary);
             font-size: 0.75em;
+        }
+        
+        .footer-disclaimer {
+            background: rgba(249, 115, 22, 0.1);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-bottom: 10px;
+            color: var(--accent-orange);
+            font-size: 0.85em;
+        }
+        
+        .footer-disclaimer a {
+            color: var(--accent-cyan);
+            text-decoration: underline;
+            margin-left: 4px;
+        }
+        
+        .footer-credits {
+            color: var(--text-secondary);
         }
         
         footer a {
@@ -1666,22 +1770,39 @@ HTML_PAGE = '''<!DOCTYPE html>
         </div>
         
         <footer>
-            Built for Tushar Shah • Powered by Dropbox API
+            <div class="footer-disclaimer">
+                ⚠️ <strong>Disclaimer:</strong> Use at your own risk. The developer assumes no responsibility for data loss or damage.
+                <a href="#" onclick="showDisclaimer(); return false;">Read full disclaimer</a>
+            </div>
+            <div class="footer-credits">
+                Built for Tushar Shah • Powered by Dropbox API • <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank">GitHub</a>
+            </div>
         </footer>
     </div>
     
     <div class="modal-overlay" id="deleteModal">
         <div class="modal">
             <div class="modal-icon">⚠️</div>
-            <h2>Confirm Deletion</h2>
+            <h2 style="color: var(--accent-red);">Confirm Deletion</h2>
             <p>
-                You are about to delete <strong id="deleteCount">0</strong> empty folder(s).<br><br>
-                This will move them to your Dropbox trash, where they can be recovered for 30 days.
+                You are about to delete <strong id="deleteCount">0</strong> empty folder(s).
             </p>
-            <div class="btn-group">
+            <div class="delete-warning-box">
+                <strong>⚠️ Important:</strong>
+                <ul>
+                    <li>Folders will be moved to Dropbox trash</li>
+                    <li>Recovery is possible for <strong>30 days only</strong></li>
+                    <li>After 30 days, deletion is <strong>permanent</strong></li>
+                    <li>This action cannot be undone after trash is emptied</li>
+                </ul>
+            </div>
+            <p style="font-size: 0.85em; color: var(--text-secondary); margin-top: 16px;">
+                💡 <strong>Tip:</strong> Export results to JSON/CSV before deleting for your records.
+            </p>
+            <div class="btn-group" style="margin-top: 20px;">
                 <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
                 <button class="btn btn-danger" onclick="executeDelete()">
-                    🗑️ Delete Folders
+                    🗑️ Yes, Delete Folders
                 </button>
             </div>
         </div>
@@ -1985,6 +2106,66 @@ HTML_PAGE = '''<!DOCTYPE html>
                         <button class="btn btn-primary" onclick="closeWizard()">Start Using the App</button>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Disclaimer Modal -->
+    <div class="modal-overlay" id="disclaimerModal">
+        <div class="modal disclaimer-modal">
+            <div class="modal-icon">⚠️</div>
+            <h2>Important Disclaimer</h2>
+            
+            <div class="disclaimer-content">
+                <div class="disclaimer-section warning">
+                    <h3>🚨 USE AT YOUR OWN RISK</h3>
+                    <p>This software is provided <strong>"AS IS"</strong> without warranty of any kind, express or implied. By using this application, you acknowledge and accept the following:</p>
+                </div>
+                
+                <div class="disclaimer-section">
+                    <h3>📋 Terms of Use</h3>
+                    <ul>
+                        <li><strong>No Warranty:</strong> The developer makes no guarantees about the accuracy, reliability, or suitability of this software for any purpose.</li>
+                        <li><strong>No Liability:</strong> The developer shall not be held liable for any direct, indirect, incidental, special, or consequential damages arising from the use of this software.</li>
+                        <li><strong>Data Loss Risk:</strong> This application deletes folders from your Dropbox account. While safety measures are in place, data loss may still occur.</li>
+                        <li><strong>User Responsibility:</strong> You are solely responsible for backing up your data and verifying the results before deletion.</li>
+                        <li><strong>Recovery Limitations:</strong> Deleted folders can only be recovered from Dropbox trash for 30 days. After that, deletion is permanent.</li>
+                    </ul>
+                </div>
+                
+                <div class="disclaimer-section">
+                    <h3>✅ Safety Measures Implemented</h3>
+                    <p>To minimize risk, this application includes:</p>
+                    <ul>
+                        <li>Dry-run mode by default (scan without deleting)</li>
+                        <li>Explicit confirmation required before any deletion</li>
+                        <li>Deleted folders go to Dropbox trash (30-day recovery)</li>
+                        <li>Deepest folders deleted first to prevent errors</li>
+                        <li>Comprehensive logging of all operations</li>
+                        <li>Export results before deletion for your records</li>
+                    </ul>
+                </div>
+                
+                <div class="disclaimer-section">
+                    <h3>💡 Recommendations</h3>
+                    <ul>
+                        <li><strong>Always scan first</strong> - Review the empty folder list before deleting</li>
+                        <li><strong>Export results</strong> - Download JSON/CSV before deleting</li>
+                        <li><strong>Test on small folders</strong> - Try a small folder first to understand behavior</li>
+                        <li><strong>Ensure sync is complete</strong> - Wait for Dropbox to show "Up to date"</li>
+                        <li><strong>Back up important data</strong> - Maintain separate backups of critical files</li>
+                    </ul>
+                </div>
+                
+                <div class="disclaimer-section legal">
+                    <h3>📜 Legal</h3>
+                    <p>This software is licensed under the MIT License. By using this software, you agree to hold harmless the developer, contributors, and any affiliated parties from any claims, damages, or other liability.</p>
+                    <p><strong>This is not affiliated with or endorsed by Dropbox, Inc.</strong></p>
+                </div>
+            </div>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="acceptDisclaimer()">I Understand and Accept</button>
             </div>
         </div>
     </div>
@@ -2819,12 +3000,36 @@ HTML_PAGE = '''<!DOCTYPE html>
             }
         }
         
+        // Disclaimer functions
+        function showDisclaimer() {
+            document.getElementById('disclaimerModal').classList.add('active');
+        }
+        
+        function acceptDisclaimer() {
+            localStorage.setItem('disclaimerAccepted', 'true');
+            localStorage.setItem('disclaimerDate', new Date().toISOString());
+            document.getElementById('disclaimerModal').classList.remove('active');
+        }
+        
+        function checkDisclaimerAccepted() {
+            const accepted = localStorage.getItem('disclaimerAccepted');
+            if (!accepted) {
+                // Show disclaimer on first visit
+                setTimeout(() => {
+                    showDisclaimer();
+                }, 500);
+            }
+        }
+        
         // Start polling
         fetchStatus();
         pollInterval = setInterval(fetchStatus, 400);
         
         // Check if setup is needed
         checkSetupNeeded();
+        
+        // Check if disclaimer needs to be shown
+        checkDisclaimerAccepted();
     </script>
 </body>
 </html>

@@ -413,9 +413,49 @@ Contributions are welcome! Please:
 
 ---
 
+## ⚠️ Disclaimer
+
+### USE AT YOUR OWN RISK
+
+**This software is provided "AS IS" without warranty of any kind, express or implied.**
+
+By using this application, you acknowledge and accept the following:
+
+| Term | Description |
+|------|-------------|
+| **No Warranty** | The developer makes no guarantees about accuracy, reliability, or suitability |
+| **No Liability** | The developer shall not be held liable for any damages arising from use |
+| **Data Loss Risk** | This application deletes folders - data loss may occur |
+| **User Responsibility** | You are solely responsible for backing up your data |
+| **Recovery Limits** | Deleted folders can only be recovered for 30 days |
+
+### Safety Measures Implemented
+
+To minimize risk, this application includes:
+
+- ✅ Dry-run mode by default (scan without deleting)
+- ✅ Explicit confirmation required before any deletion
+- ✅ Deleted folders go to Dropbox trash (30-day recovery)
+- ✅ Deepest folders deleted first to prevent errors
+- ✅ Comprehensive logging of all operations
+- ✅ Export results to JSON/CSV before deletion
+- ✅ Visual warnings at every deletion step
+
+### Recommendations
+
+1. **Always scan first** - Review the empty folder list before deleting
+2. **Export results** - Download JSON/CSV before deleting for your records
+3. **Test on small folders** - Try a small folder first to understand behavior
+4. **Ensure sync is complete** - Wait for Dropbox to show "Up to date"
+5. **Maintain backups** - Keep separate backups of critical files
+
+---
+
 ## 📄 License
 
 MIT License - Feel free to use, modify, and distribute.
+
+**This software is not affiliated with or endorsed by Dropbox, Inc.**
 
 ---
 
@@ -425,4 +465,4 @@ Created for Tushar Shah
 
 ---
 
-**⚠️ Always review the empty folder list before deleting! When in doubt, export to JSON/CSV first.**
+**⚠️ IMPORTANT: Always review the empty folder list before deleting! Export to JSON/CSV first. Use at your own risk.**
