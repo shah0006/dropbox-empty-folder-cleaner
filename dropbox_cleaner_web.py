@@ -858,31 +858,124 @@ HTML_PAGE = '''<!DOCTYPE html>
             margin-bottom: 4px;
         }
         
-        /* Help Button */
-        .help-btn {
+        /* Top Navigation */
+        .top-nav {
             position: fixed;
-            top: 16px;
-            right: 16px;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid var(--border-color);
-            color: var(--text-secondary);
-            font-size: 1.1em;
-            cursor: pointer;
-            transition: all 0.3s ease;
+            top: 12px;
+            right: 12px;
             display: flex;
-            align-items: center;
-            justify-content: center;
+            gap: 8px;
             z-index: 100;
         }
         
-        .help-btn:hover {
+        .nav-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.8em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            font-family: inherit;
+        }
+        
+        .nav-btn:hover {
             background: var(--accent-cyan);
             color: white;
             border-color: var(--accent-cyan);
-            transform: scale(1.1);
+            transform: translateY(-2px);
+        }
+        
+        .nav-icon {
+            font-size: 1em;
+        }
+        
+        .nav-label {
+            font-weight: 500;
+        }
+        
+        /* Custom Tooltips */
+        [data-tooltip] {
+            position: relative;
+        }
+        
+        [data-tooltip]::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(-8px);
+            padding: 8px 12px;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            font-size: 0.75em;
+            font-weight: 400;
+            white-space: nowrap;
+            border-radius: 6px;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 1000;
+            pointer-events: none;
+            max-width: 250px;
+            white-space: normal;
+            text-align: center;
+            line-height: 1.4;
+        }
+        
+        [data-tooltip]::before {
+            content: '';
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%) translateY(4px);
+            border: 6px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.9);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s ease;
+            z-index: 1000;
+        }
+        
+        [data-tooltip]:hover::after,
+        [data-tooltip]:hover::before {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        /* Tooltip positioning variants */
+        [data-tooltip-pos="bottom"]::after {
+            bottom: auto;
+            top: 100%;
+            transform: translateX(-50%) translateY(8px);
+        }
+        
+        [data-tooltip-pos="bottom"]::before {
+            bottom: auto;
+            top: 100%;
+            transform: translateX(-50%) translateY(-4px);
+            border-top-color: transparent;
+            border-bottom-color: rgba(0, 0, 0, 0.9);
+        }
+        
+        [data-tooltip-pos="left"]::after {
+            bottom: auto;
+            top: 50%;
+            left: auto;
+            right: 100%;
+            transform: translateY(-50%) translateX(-8px);
+        }
+        
+        [data-tooltip-pos="right"]::after {
+            bottom: auto;
+            top: 50%;
+            left: 100%;
+            transform: translateY(-50%) translateX(8px);
         }
         
         /* Help Modal */
@@ -1610,6 +1703,35 @@ HTML_PAGE = '''<!DOCTYPE html>
             margin-left: 4px;
         }
         
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .footer-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+            font-size: 0.9em;
+        }
+        
+        .footer-links a:hover {
+            color: var(--accent-cyan);
+            background: rgba(0, 212, 255, 0.1);
+        }
+        
+        .footer-sep {
+            color: var(--border-color);
+        }
+        
         .footer-credits {
             color: var(--text-secondary);
         }
@@ -1630,8 +1752,21 @@ HTML_PAGE = '''<!DOCTYPE html>
 <body>
     <div class="bg-gradient"></div>
     
-    <!-- Help Button -->
-    <button class="help-btn" onclick="showHelp()" title="Help & Documentation">?</button>
+    <!-- Top Navigation -->
+    <div class="top-nav">
+        <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank" class="nav-btn" title="View source code and full documentation on GitHub">
+            <span class="nav-icon">📚</span>
+            <span class="nav-label">Docs</span>
+        </a>
+        <button class="nav-btn" onclick="showHelp()" title="Open help documentation and usage guide">
+            <span class="nav-icon">❓</span>
+            <span class="nav-label">Help</span>
+        </button>
+        <button class="nav-btn" onclick="showDisclaimer()" title="View important disclaimer and terms of use">
+            <span class="nav-icon">⚠️</span>
+            <span class="nav-label">Disclaimer</span>
+        </button>
+    </div>
     
     <div class="container">
         <header>
@@ -1643,7 +1778,8 @@ HTML_PAGE = '''<!DOCTYPE html>
         <div class="card">
             <div class="card-title">
                 <span class="card-title-left">🔗 Connection Status</span>
-                <span id="connectionStatus" class="status-badge status-disconnected">
+                <span id="connectionStatus" class="status-badge status-disconnected" 
+                      data-tooltip="Shows whether your Dropbox account is connected. Green = connected, Red = not connected.">
                     <span class="status-dot"></span>
                     Connecting...
                 </span>
@@ -1653,7 +1789,9 @@ HTML_PAGE = '''<!DOCTYPE html>
                 <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
                     Connect your Dropbox account to get started:
                 </p>
-                <button class="btn btn-primary" onclick="showSetupWizard()">
+                <button class="btn btn-primary" onclick="showSetupWizard()"
+                        data-tooltip="Start the guided setup wizard to connect your Dropbox account. Takes about 2 minutes."
+                        data-tooltip-pos="bottom">
                     🚀 Set Up Dropbox Connection
                 </button>
             </div>
@@ -1663,25 +1801,31 @@ HTML_PAGE = '''<!DOCTYPE html>
             <div class="card-title">
                 <span class="card-title-left">📂 Select Folder to Scan</span>
             </div>
-            <select id="folderSelect">
+            <select id="folderSelect" data-tooltip="Choose which folder to scan. Select '/' to scan your entire Dropbox, or pick a specific folder." data-tooltip-pos="bottom">
                 <option value="">Loading folders...</option>
             </select>
             <div class="btn-group">
-                <button id="scanBtn" class="btn btn-primary" onclick="startScan()">
+                <button id="scanBtn" class="btn btn-primary" onclick="startScan()" 
+                        data-tooltip="Search the selected folder for empty folders. This is safe - nothing will be deleted until you click Delete."
+                        data-tooltip-pos="bottom">
                     🔍 Scan for Empty Folders
                 </button>
-                <button id="deleteBtn" class="btn btn-danger" onclick="confirmDelete()" disabled>
+                <button id="deleteBtn" class="btn btn-danger" onclick="confirmDelete()" disabled
+                        data-tooltip="Permanently delete all found empty folders. You will be asked to confirm before deletion."
+                        data-tooltip-pos="bottom">
                     🗑️ Delete Empty Folders
                 </button>
             </div>
             
             <!-- Settings Toggle -->
             <div class="settings-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
-                <label class="toggle-label">
+                <label class="toggle-label" data-tooltip="When enabled, folders containing only system files like .DS_Store or Thumbs.db will be treated as empty" data-tooltip-pos="bottom">
                     <input type="checkbox" id="ignoreSystemFiles" checked onchange="updateConfig()">
                     <span class="toggle-text">Ignore system files (.DS_Store, Thumbs.db, etc.)</span>
                 </label>
-                <button class="btn-small" onclick="showSettings()" style="margin-left: auto;" title="Advanced Settings">⚙️ Settings</button>
+                <button class="btn-small" onclick="showSettings()" style="margin-left: auto;" 
+                        data-tooltip="Configure Dropbox connection, system files, exclusion patterns, and more"
+                        data-tooltip-pos="bottom">⚙️ Settings</button>
             </div>
         </div>
         
@@ -1706,27 +1850,27 @@ HTML_PAGE = '''<!DOCTYPE html>
                 </div>
                 
                 <div class="stats-grid">
-                    <div class="stat-card folders active" id="folderStatCard">
+                    <div class="stat-card folders active" id="folderStatCard" data-tooltip="Total number of folders checked during the scan">
                         <div class="stat-icon">📁</div>
                         <div class="stat-value" id="folderCount">0</div>
                         <div class="stat-label">Folders Scanned</div>
                     </div>
-                    <div class="stat-card files active" id="fileStatCard">
+                    <div class="stat-card files active" id="fileStatCard" data-tooltip="Total number of files found (folders with files are not empty)">
                         <div class="stat-icon">📄</div>
                         <div class="stat-value" id="fileCount">0</div>
                         <div class="stat-label">Files Found</div>
                     </div>
-                    <div class="stat-card time active" id="timeStatCard">
+                    <div class="stat-card time active" id="timeStatCard" data-tooltip="How long the scan has been running">
                         <div class="stat-icon">⏱️</div>
                         <div class="stat-value" id="elapsedTime">0:00</div>
                         <div class="stat-label">Elapsed Time</div>
                     </div>
-                    <div class="stat-card rate active" id="rateStatCard">
+                    <div class="stat-card rate active" id="rateStatCard" data-tooltip="Processing speed - items checked per second">
                         <div class="stat-icon">⚡</div>
                         <div class="stat-value" id="itemRate">0</div>
                         <div class="stat-label">Items/Second</div>
                     </div>
-                    <div class="stat-card empty" id="emptyStatCard" style="display: none;">
+                    <div class="stat-card empty" id="emptyStatCard" style="display: none;" data-tooltip="Total empty folders found that can be deleted">
                         <div class="stat-icon">🗂️</div>
                         <div class="stat-value" id="emptyCount">0</div>
                         <div class="stat-label">Empty Folders</div>
@@ -1745,9 +1889,11 @@ HTML_PAGE = '''<!DOCTYPE html>
             <div class="results-header">
                 <span class="card-title-left">📋 Results</span>
                 <div style="display: flex; gap: 8px; align-items: center;">
-                    <span id="resultsCount" class="results-count">0 empty folders</span>
-                    <button class="btn-small" onclick="exportResults('json')" title="Export as JSON">📄 JSON</button>
-                    <button class="btn-small" onclick="exportResults('csv')" title="Export as CSV">📊 CSV</button>
+                    <span id="resultsCount" class="results-count" data-tooltip="Total number of empty folders found in your scan">0 empty folders</span>
+                    <button class="btn-small" onclick="exportResults('json')" 
+                            data-tooltip="Download the list of empty folders as a JSON file. Recommended before deleting for your records.">📄 JSON</button>
+                    <button class="btn-small" onclick="exportResults('csv')" 
+                            data-tooltip="Download the list of empty folders as a CSV spreadsheet. Opens in Excel, Numbers, or Google Sheets.">📊 CSV</button>
                 </div>
             </div>
             
@@ -1770,12 +1916,21 @@ HTML_PAGE = '''<!DOCTYPE html>
         </div>
         
         <footer>
+            <div class="footer-links">
+                <a href="#" onclick="showHelp(); return false;" data-tooltip="View usage guide and documentation">📖 Help Guide</a>
+                <span class="footer-sep">•</span>
+                <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner#readme" target="_blank" data-tooltip="Read full documentation on GitHub">📚 Full Documentation</a>
+                <span class="footer-sep">•</span>
+                <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner/issues" target="_blank" data-tooltip="Report a bug or request a feature">🐛 Report Issue</a>
+                <span class="footer-sep">•</span>
+                <a href="#" onclick="showSettings(); return false;" data-tooltip="Configure app settings">⚙️ Settings</a>
+            </div>
             <div class="footer-disclaimer">
                 ⚠️ <strong>Disclaimer:</strong> Use at your own risk. The developer assumes no responsibility for data loss or damage.
                 <a href="#" onclick="showDisclaimer(); return false;">Read full disclaimer</a>
             </div>
             <div class="footer-credits">
-                Built for Tushar Shah • Powered by Dropbox API • <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank">GitHub</a>
+                v1.2.3 • Built for Tushar Shah • <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank">GitHub</a>
             </div>
         </footer>
     </div>
