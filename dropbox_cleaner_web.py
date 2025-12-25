@@ -1561,54 +1561,122 @@ HTML_PAGE = '''<!DOCTYPE html>
             <h2>Help & Documentation</h2>
             
             <h3>🎯 Purpose</h3>
-            <p>This tool helps you find and remove empty folders from your Dropbox account. Over time, empty folders accumulate from deleted files, failed syncs, and reorganization.</p>
+            <p>This tool helps you find and remove empty folders from your Dropbox account. Over time, empty folders accumulate from deleted files, failed syncs, reorganization, and application artifacts. Cleaning these up keeps your Dropbox organized and can improve sync performance.</p>
+            
+            <h3>🚀 First-Time Setup</h3>
+            <div class="help-section">
+                <p>If you haven't connected to Dropbox yet:</p>
+                <ol>
+                    <li>Go to <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color: var(--accent-cyan);">Dropbox App Console</a> and create a new app</li>
+                    <li>Select <strong>"Scoped access"</strong> → <strong>"Full Dropbox"</strong></li>
+                    <li>In the app's <strong>Permissions</strong> tab, enable:
+                        <br>• <code style="background: rgba(0,212,255,0.1); padding: 2px 6px; border-radius: 4px;">files.metadata.read</code>
+                        <br>• <code style="background: rgba(0,212,255,0.1); padding: 2px 6px; border-radius: 4px;">files.content.write</code></li>
+                    <li>Click <strong>⚙️ Settings</strong> in this app</li>
+                    <li>Enter your <strong>App Key</strong> and <strong>App Secret</strong></li>
+                    <li>Click <strong>"Get New Token"</strong> and follow the authorization flow</li>
+                    <li>Click <strong>"Save Settings"</strong></li>
+                </ol>
+            </div>
             
             <h3>📋 How to Use</h3>
             <div class="help-section">
                 <ol>
-                    <li><strong>Select a folder</strong> from the dropdown (or "/" for entire Dropbox)</li>
-                    <li><strong>Click "Scan"</strong> to find empty folders</li>
-                    <li><strong>Review the results</strong> - all empty folders will be listed</li>
-                    <li><strong>Click "Delete"</strong> if you want to remove them</li>
-                    <li><strong>Confirm</strong> in the popup dialog</li>
+                    <li><strong>Select a folder</strong> from the dropdown
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Choose "/" to scan your entire Dropbox</span>
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Or select a specific folder to scan only that area</span></li>
+                    <li><strong>Configure options</strong> (optional)
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Toggle "Ignore system files" to treat .DS_Store folders as empty</span></li>
+                    <li><strong>Click "Scan for Empty Folders"</strong>
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Watch real-time progress: folders scanned, files found, elapsed time</span></li>
+                    <li><strong>Review the results</strong>
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• All empty folders are listed, sorted by depth (deepest first)</span>
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Export to JSON/CSV if you want a record</span></li>
+                    <li><strong>Click "Delete Empty Folders"</strong> if you want to remove them</li>
+                    <li><strong>Confirm deletion</strong> in the popup dialog</li>
                 </ol>
             </div>
             
             <h3>✨ Features</h3>
             <ul>
                 <li><strong>Smart Detection</strong> - Finds truly empty folders (no files, no non-empty subfolders)</li>
-                <li><strong>System File Ignore</strong> - Treats folders with only .DS_Store, Thumbs.db as empty (configurable)</li>
-                <li><strong>Safe Deletion</strong> - Deletes deepest folders first, then parents</li>
-                <li><strong>Real-time Progress</strong> - Live folder/file counts and elapsed time</li>
-                <li><strong>Export Results</strong> - Export to JSON or CSV for records/analysis</li>
-                <li><strong>Statistics</strong> - View depth distribution and scan metrics</li>
-                <li><strong>Trash Recovery</strong> - Deleted folders go to Dropbox trash (30 days)</li>
-                <li><strong>Configuration</strong> - Settings saved in config.json for customization</li>
+                <li><strong>System File Ignore</strong> - Treats folders with only .DS_Store, Thumbs.db, desktop.ini as empty</li>
+                <li><strong>Exclusion Patterns</strong> - Skip folders like .git, node_modules automatically</li>
+                <li><strong>Safe Deletion Order</strong> - Deletes deepest folders first, then works backward to parents</li>
+                <li><strong>Real-time Progress</strong> - Live folder/file counts, elapsed time, items/second rate</li>
+                <li><strong>Visual Progress Bar</strong> - Red/orange while running, solid green when complete</li>
+                <li><strong>Export Results</strong> - Export empty folder list to JSON or CSV for records</li>
+                <li><strong>Statistics Panel</strong> - View total scanned, system files ignored, deepest level</li>
+                <li><strong>Trash Recovery</strong> - Deleted folders go to Dropbox trash (recoverable for 30 days)</li>
+                <li><strong>Multi-User Support</strong> - Configure your own Dropbox credentials in Settings</li>
+                <li><strong>Persistent Settings</strong> - All settings saved to config.json</li>
+                <li><strong>Comprehensive Logging</strong> - Detailed logs saved to logs/ directory</li>
             </ul>
+            
+            <h3>⚙️ Settings</h3>
+            <div class="help-section">
+                <p>Click the <strong>⚙️ Settings</strong> button to configure:</p>
+                <ul>
+                    <li><strong>Dropbox Connection</strong> - App Key, App Secret, Refresh Token</li>
+                    <li><strong>System Files</strong> - Which files to ignore (.DS_Store, Thumbs.db, etc.)</li>
+                    <li><strong>Exclusion Patterns</strong> - Folders to skip (.git, node_modules, etc.)</li>
+                    <li><strong>Export Format</strong> - Default format for exports (JSON or CSV)</li>
+                </ul>
+            </div>
             
             <h3>⚠️ Limitations</h3>
             <div class="help-warning">
-                <strong>Important:</strong>
+                <strong>Important - Please Read:</strong>
                 <ul>
-                    <li>Cannot recover folders once deleted from Dropbox trash</li>
-                    <li>Does not check file contents, only if files exist</li>
-                    <li>May not work with Team/shared folders</li>
-                    <li>Large accounts may take several minutes to scan</li>
+                    <li><strong>Deletion is not immediately permanent</strong> - Folders go to Dropbox trash first</li>
+                    <li><strong>30-day recovery window</strong> - After that, deletion cannot be undone</li>
+                    <li><strong>Does not check file contents</strong> - Only checks if files exist in folders</li>
+                    <li><strong>Team folders may not work</strong> - Designed for personal Dropbox accounts</li>
+                    <li><strong>Large accounts take time</strong> - Scanning 100,000+ items may take several minutes</li>
+                    <li><strong>Rate limits apply</strong> - Very large operations may be rate-limited by Dropbox</li>
                 </ul>
             </div>
             
-            <h3>💡 Tips</h3>
+            <h3>💡 Tips & Best Practices</h3>
             <div class="help-tip">
                 <ul>
-                    <li>Start with a small folder to test</li>
-                    <li>Ensure Dropbox is fully synced before scanning</li>
-                    <li>Review the list carefully before deleting</li>
-                    <li>If rate limited, wait a few minutes and retry</li>
+                    <li><strong>Test first</strong> - Start with a small folder to understand how it works</li>
+                    <li><strong>Sync first</strong> - Ensure Dropbox is fully synced ("Up to date") before scanning</li>
+                    <li><strong>Review carefully</strong> - Check the list before deleting, especially the first time</li>
+                    <li><strong>Export for records</strong> - Use JSON/CSV export before deleting for a backup list</li>
+                    <li><strong>Rate limit handling</strong> - If you see errors, wait 5-10 minutes and retry</li>
+                    <li><strong>Check logs</strong> - Look in the logs/ folder for detailed diagnostic information</li>
                 </ul>
             </div>
             
-            <h3>🔐 Privacy</h3>
-            <p>Your credentials are stored locally in a .env file. This tool communicates directly with Dropbox - no data is sent to third parties.</p>
+            <h3>🔐 Security & Privacy</h3>
+            <div class="help-section">
+                <ul>
+                    <li><strong>Local credentials</strong> - Your App Key, Secret, and Token are stored only in your local .env file</li>
+                    <li><strong>No third parties</strong> - This tool communicates directly with Dropbox API only</li>
+                    <li><strong>No data collection</strong> - No analytics, no tracking, no external servers</li>
+                    <li><strong>Open source</strong> - Full code available for review on GitHub</li>
+                    <li><strong>Refresh tokens</strong> - Long-term access without storing your password</li>
+                </ul>
+            </div>
+            
+            <h3>🛠️ Troubleshooting</h3>
+            <div class="help-section">
+                <ul>
+                    <li><strong>"Not connected"</strong> - Click Settings → enter credentials → Get New Token</li>
+                    <li><strong>"Authentication failed"</strong> - Your token may have expired, get a new one</li>
+                    <li><strong>"Folder not found"</strong> - Check the path exists in your Dropbox</li>
+                    <li><strong>"Rate limit exceeded"</strong> - Wait 5-10 minutes before retrying</li>
+                    <li><strong>Scan taking too long</strong> - Try scanning a smaller folder first</li>
+                    <li><strong>No empty folders found</strong> - Your selection may already be clean!</li>
+                </ul>
+            </div>
+            
+            <h3>📄 Version Information</h3>
+            <p style="font-family: 'JetBrains Mono', monospace; font-size: 0.8em;">
+                Version: 1.2.0<br>
+                GitHub: <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank" style="color: var(--accent-cyan);">shah0006/dropbox-empty-folder-cleaner</a>
+            </p>
             
             <div class="btn-group" style="margin-top: 20px;">
                 <button class="btn btn-primary" onclick="closeHelp()">Got it!</button>
