@@ -795,9 +795,15 @@ HTML_PAGE = '''<!DOCTYPE html>
         .results-list {
             max-height: 500px;
             overflow-y: auto;
+            overflow-x: hidden;
             background: rgba(0, 0, 0, 0.3);
             border-radius: 8px;
             padding: 6px;
+        }
+        
+        /* Hide scrollbar when showing success state */
+        .results-list:has(.success-state) {
+            overflow-y: hidden;
         }
         
         .results-list::-webkit-scrollbar {
@@ -849,12 +855,13 @@ HTML_PAGE = '''<!DOCTYPE html>
         .success-state {
             text-align: center;
             padding: 48px 24px;
+            overflow: hidden; /* Prevent scrollbar flicker from animation */
         }
         
         .success-icon {
             font-size: 4em;
             margin-bottom: 16px;
-            animation: successBounce 1s ease;
+            /* Single bounce, then stop - no infinite animation */
         }
         
         @keyframes successBounce {
