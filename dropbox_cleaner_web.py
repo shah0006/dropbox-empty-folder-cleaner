@@ -980,6 +980,129 @@ HTML_PAGE = '''<!DOCTYPE html>
             border-color: var(--accent-cyan);
         }
         
+        /* Settings Modal */
+        .settings-modal {
+            max-width: 520px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+        
+        .settings-modal h2 {
+            color: var(--accent-cyan);
+            margin-bottom: 16px;
+        }
+        
+        .settings-modal h3 {
+            color: var(--accent-purple);
+            font-size: 0.9em;
+            margin: 0 0 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .settings-section {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin: 12px 0;
+            border: 1px solid var(--border-color);
+        }
+        
+        .settings-desc {
+            color: var(--text-secondary);
+            font-size: 0.8em;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+        
+        .settings-list-container {
+            margin-top: 10px;
+        }
+        
+        .settings-label {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.8em;
+            margin-bottom: 4px;
+        }
+        
+        .settings-textarea {
+            width: 100%;
+            padding: 8px 10px;
+            font-size: 0.85em;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+            resize: vertical;
+            min-height: 60px;
+        }
+        
+        .settings-textarea:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+        
+        .settings-hint {
+            display: block;
+            color: var(--text-secondary);
+            font-size: 0.7em;
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+        
+        .settings-row-inline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .settings-row-inline:last-child {
+            border-bottom: none;
+        }
+        
+        .settings-row-inline label {
+            color: var(--text-secondary);
+            font-size: 0.85em;
+        }
+        
+        .settings-input {
+            width: 100px;
+            padding: 6px 10px;
+            font-size: 0.85em;
+            font-family: 'JetBrains Mono', monospace;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+            text-align: center;
+        }
+        
+        .settings-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+        
+        .settings-select {
+            padding: 6px 10px;
+            font-size: 0.85em;
+            font-family: inherit;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: rgba(0, 0, 0, 0.3);
+            color: var(--text-primary);
+            cursor: pointer;
+        }
+        
+        .settings-select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+        
         /* Statistics Panel */
         .stats-panel {
             background: rgba(0, 0, 0, 0.2);
@@ -1006,6 +1129,42 @@ HTML_PAGE = '''<!DOCTYPE html>
         .stat-item strong {
             color: var(--text-primary);
             font-family: 'JetBrains Mono', monospace;
+        }
+        
+        /* Toast Notifications */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            font-weight: 500;
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        .toast-success {
+            background: var(--accent-green);
+            color: white;
+        }
+        
+        .toast-error {
+            background: var(--accent-red);
+            color: white;
+        }
+        
+        .toast-info {
+            background: var(--accent-cyan);
+            color: white;
         }
         
         /* Footer - Compact */
@@ -1075,6 +1234,7 @@ HTML_PAGE = '''<!DOCTYPE html>
                     <input type="checkbox" id="ignoreSystemFiles" checked onchange="updateConfig()">
                     <span class="toggle-text">Ignore system files (.DS_Store, Thumbs.db, etc.)</span>
                 </label>
+                <button class="btn-small" onclick="showSettings()" style="margin-left: auto;" title="Advanced Settings">⚙️ Settings</button>
             </div>
         </div>
         
@@ -1180,6 +1340,62 @@ HTML_PAGE = '''<!DOCTYPE html>
                 <button class="btn btn-danger" onclick="executeDelete()">
                     🗑️ Delete Folders
                 </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal settings-modal">
+            <div class="modal-icon">⚙️</div>
+            <h2>Settings</h2>
+            
+            <div class="settings-section">
+                <h3>🗂️ System File Handling</h3>
+                <p class="settings-desc">Folders containing only these files will be considered empty.</p>
+                
+                <label class="toggle-label" style="margin: 12px 0;">
+                    <input type="checkbox" id="settingsIgnoreSystem" checked>
+                    <span class="toggle-text">Enable system file ignore</span>
+                </label>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">System files to ignore:</label>
+                    <textarea id="systemFilesList" class="settings-textarea" rows="4" placeholder="One file per line"></textarea>
+                    <span class="settings-hint">One filename per line (e.g., .DS_Store)</span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>🚫 Exclusion Patterns</h3>
+                <p class="settings-desc">Folders matching these names will be skipped during scanning.</p>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">Folder names to exclude:</label>
+                    <textarea id="excludePatternsList" class="settings-textarea" rows="3" placeholder="One pattern per line"></textarea>
+                    <span class="settings-hint">One folder name per line (e.g., .git, node_modules)</span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>🌐 Application</h3>
+                <div class="settings-row-inline">
+                    <label>Server Port:</label>
+                    <input type="number" id="settingsPort" class="settings-input" value="8765" min="1024" max="65535">
+                </div>
+                <div class="settings-row-inline">
+                    <label>Default Export Format:</label>
+                    <select id="settingsExportFormat" class="settings-select">
+                        <option value="json">JSON</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="resetSettings()">↺ Reset to Defaults</button>
+                <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
             </div>
         </div>
     </div>
@@ -1519,6 +1735,94 @@ HTML_PAGE = '''<!DOCTYPE html>
             if (config) {
                 document.getElementById('ignoreSystemFiles').checked = config.ignore_system_files !== false;
             }
+        }
+        
+        let currentConfig = {};
+        
+        function showSettings() {
+            // Populate settings from current config
+            fetch('/api/config')
+                .then(r => r.json())
+                .then(config => {
+                    currentConfig = config;
+                    document.getElementById('settingsIgnoreSystem').checked = config.ignore_system_files !== false;
+                    document.getElementById('systemFilesList').value = (config.system_files || []).join('\n');
+                    document.getElementById('excludePatternsList').value = (config.exclude_patterns || []).join('\n');
+                    document.getElementById('settingsPort').value = config.port || 8765;
+                    document.getElementById('settingsExportFormat').value = config.export_format || 'json';
+                    document.getElementById('settingsModal').classList.add('active');
+                })
+                .catch(e => {
+                    console.error('Failed to load config:', e);
+                    alert('Failed to load settings');
+                });
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+        
+        async function saveSettings() {
+            const newConfig = {
+                ignore_system_files: document.getElementById('settingsIgnoreSystem').checked,
+                system_files: document.getElementById('systemFilesList').value
+                    .split('\n')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0),
+                exclude_patterns: document.getElementById('excludePatternsList').value
+                    .split('\n')
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0),
+                port: parseInt(document.getElementById('settingsPort').value) || 8765,
+                export_format: document.getElementById('settingsExportFormat').value
+            };
+            
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(newConfig)
+                });
+                
+                if (response.ok) {
+                    closeSettings();
+                    // Update main toggle
+                    document.getElementById('ignoreSystemFiles').checked = newConfig.ignore_system_files;
+                    showToast('Settings saved successfully!', 'success');
+                } else {
+                    showToast('Failed to save settings', 'error');
+                }
+            } catch (e) {
+                console.error('Failed to save settings:', e);
+                showToast('Failed to save settings', 'error');
+            }
+        }
+        
+        function resetSettings() {
+            if (confirm('Reset all settings to defaults?')) {
+                document.getElementById('settingsIgnoreSystem').checked = true;
+                document.getElementById('systemFilesList').value = '.DS_Store\nThumbs.db\ndesktop.ini\n.dropbox\n.dropbox.attr\nIcon\\r\n.localized';
+                document.getElementById('excludePatternsList').value = '.git\nnode_modules\n__pycache__\n.venv\n.env';
+                document.getElementById('settingsPort').value = '8765';
+                document.getElementById('settingsExportFormat').value = 'json';
+            }
+        }
+        
+        function showToast(message, type) {
+            // Create toast element
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            // Animate in
+            setTimeout(() => toast.classList.add('show'), 10);
+            
+            // Remove after delay
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
         
         // Start polling
