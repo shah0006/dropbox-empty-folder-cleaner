@@ -2748,33 +2748,92 @@ HTML_PAGE = '''<!DOCTYPE html>
             }
         }
         
-        // Refresh folder tree after deletions
-        function refreshFolderTree() {
-            console.log('Refreshing folder tree after deletion...');
+        // Get list of currently expanded folder paths
+        function getExpandedPaths() {
+            const expanded = [];
+            document.querySelectorAll('.tree-children:not(.collapsed)').forEach(container => {
+                const wrapper = container.closest('.tree-item-wrapper');
+                if (wrapper) {
+                    const treeItem = wrapper.querySelector('.tree-item');
+                    if (treeItem && treeItem.dataset.path) {
+                        expanded.push(treeItem.dataset.path);
+                    }
+                }
+            });
+            // Also include root if rootFolders is visible
+            const rootFolders = document.getElementById('rootFolders');
+            if (rootFolders && !rootFolders.classList.contains('collapsed')) {
+                expanded.push('');  // Root path is empty string
+            }
+            return expanded;
+        }
+        
+        // Re-expand folders to given paths
+        async function expandToPaths(paths) {
+            for (const path of paths) {
+                if (path === '') {
+                    // Root is always expanded, skip
+                    continue;
+                }
+                
+                // Find the tree item with this path
+                const treeItem = document.querySelector(`.tree-item[data-path="${CSS.escape(path)}"]`);
+                if (treeItem) {
+                    const wrapper = treeItem.closest('.tree-item-wrapper');
+                    const childrenContainer = wrapper ? wrapper.querySelector('.tree-children') : null;
+                    
+                    if (childrenContainer && childrenContainer.classList.contains('collapsed')) {
+                        // Expand this folder
+                        await toggleFolderExpand(treeItem, path);
+                    }
+                }
+            }
+        }
+        
+        // Refresh folder tree after deletions (preserving expanded state)
+        async function refreshFolderTree() {
+            console.log('Refreshing folder tree...');
+            
+            // Save currently expanded paths and selected path
+            const expandedPaths = getExpandedPaths();
+            const previousSelection = selectedFolderPath;
+            console.log('Preserving expanded paths:', expandedPaths);
+            console.log('Preserving selection:', previousSelection);
             
             // Clear the cache of loaded folders
             loadedFolders.clear();
             
-            // Reset selection to root
-            selectedFolderPath = '';
-            document.getElementById('folderSelect').value = '';
-            document.getElementById('selectedPath').textContent = '/ (Entire Dropbox)';
+            // Reload root folders
+            await loadRootFolders();
             
-            // Remove selected class from all items and select root
-            document.querySelectorAll('.tree-item.selected').forEach(el => {
-                el.classList.remove('selected');
-            });
-            const rootItem = document.querySelector('.tree-item.root-item');
-            if (rootItem) {
-                rootItem.classList.add('selected');
+            // Re-expand previously expanded folders (in order from root to deep)
+            // Sort by depth (number of slashes) to expand parents before children
+            expandedPaths.sort((a, b) => (a.match(/\//g) || []).length - (b.match(/\//g) || []).length);
+            await expandToPaths(expandedPaths);
+            
+            // Try to re-select the previously selected folder
+            if (previousSelection) {
+                const prevItem = document.querySelector(`.tree-item[data-path="${CSS.escape(previousSelection)}"]`);
+                if (prevItem) {
+                    selectFolder(prevItem, previousSelection);
+                    console.log('Re-selected folder:', previousSelection);
+                } else {
+                    // Folder was deleted, reset to root
+                    console.log('Previous selection no longer exists, resetting to root');
+                    selectedFolderPath = '';
+                    document.getElementById('folderSelect').value = '';
+                    document.getElementById('selectedPath').textContent = '/ (Entire Dropbox)';
+                    
+                    document.querySelectorAll('.tree-item.selected').forEach(el => el.classList.remove('selected'));
+                    const rootItem = document.querySelector('.tree-item.root-item');
+                    if (rootItem) rootItem.classList.add('selected');
+                }
             }
-            
-            // Reload root folders (this collapses everything)
-            loadRootFolders();
         }
         
-        // Track if we've already refreshed after last deletion
+        // Track if we've already refreshed after last deletion/scan
         let lastDeleteRefreshed = false;
+        let lastScanRefreshed = false;
         
         async function fetchStatus() {
             try {
@@ -2921,6 +2980,12 @@ HTML_PAGE = '''<!DOCTYPE html>
                     animateValue('elapsedTime', formatTime(data.scan_progress.elapsed || 0));
                     animateValue('itemRate', formatNumber(data.scan_progress.rate || 0));
                     
+                    // Refresh folder tree after scan (only once)
+                    if (!lastScanRefreshed) {
+                        lastScanRefreshed = true;
+                        refreshFolderTree();
+                    }
+                    
                     // Show empty count stat
                     emptyStatCard.style.display = 'block';
                     animateValue('emptyCount', formatNumber(data.empty_folders.length));
@@ -2982,8 +3047,9 @@ HTML_PAGE = '''<!DOCTYPE html>
             const folder = selectedFolderPath; // Use tree selection
             console.log('startScan called, folder:', folder);
             
-            // Reset deletion refresh flag for next deletion cycle
+            // Reset refresh flags for next cycle
             lastDeleteRefreshed = false;
+            lastScanRefreshed = false;
             
             document.getElementById('resultsCard').style.display = 'none';
             document.getElementById('emptyStatCard').style.display = 'none';
