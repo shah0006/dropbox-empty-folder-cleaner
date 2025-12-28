@@ -12,8 +12,8 @@ load_dotenv()
 app_key = os.getenv("DROPBOX_APP_KEY")
 app_secret = os.getenv("DROPBOX_APP_SECRET")
 
-# The authorization code from the user
-auth_code = "QO4W5Xfq-NkAAAAAAAACGxkzoSLypm8-1P1vg31LEiA"
+# The authorization code from the user (paste here or get from command line)
+auth_code = input("Enter your authorization code: ").strip()
 
 print("Exchanging authorization code for tokens...")
 

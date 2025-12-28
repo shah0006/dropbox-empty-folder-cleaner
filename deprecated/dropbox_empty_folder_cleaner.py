@@ -26,7 +26,10 @@ except ImportError:
     print("Error: dropbox package not installed.")
     print("Run: pip install dropbox python-dotenv")
     sys.exit(1)
+from logger_setup import setup_logger, format_api_error
 
+# Initialize robust logging
+logger, log_filename = setup_logger('DropboxCleanerCore', 'dropbox_cleaner_core')
 
 # Configuration
 ROOT_FOLDER = ""  # Scan entire personal Dropbox (root level)
@@ -78,9 +81,16 @@ def get_dropbox_client():
             print("⚠️  Using short-lived access token. Run 'python3 dropbox_auth.py' for long-term tokens.")
             return dbx
         except AuthError as e:
+            logger.error(f"Authentication failed: {e}")
+            logger.exception("Auth stack trace:")
             print(f"Error: Authentication failed - {e}")
             print("Your access token has expired.")
             print("Run 'python3 dropbox_auth.py' to get a refresh token (recommended).")
+            sys.exit(1)
+        except Exception as e:
+            logger.error(f"Unexpected error during connection: {e}")
+            logger.exception("Connection stack trace:")
+            print(f"Error: Connection failed - {e}")
             sys.exit(1)
     
     else:
@@ -89,27 +99,61 @@ def get_dropbox_client():
         sys.exit(1)
 
 
-def list_all_entries(dbx, root_path):
+class ProgressBar:
+    """Simple text-based progress indicator."""
+    
+    def __init__(self, desc="Processing"):
+        self.desc = desc
+        self.folders = 0
+        self.files = 0
+        self.start_time = time.time()
+        self.spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
+        self.spin_idx = 0
+    
+    def update(self, folders, files):
+        """Update the progress display."""
+        self.folders = folders
+        self.files = files
+        self.spin_idx = (self.spin_idx + 1) % len(self.spinner)
+        
+        elapsed = time.time() - self.start_time
+        spinner = self.spinner[self.spin_idx]
+        
+        # Create progress string
+        progress_str = f"\r{spinner} {self.desc}: "
+        progress_str += f"📁 {folders:,} folders | 📄 {files:,} files | "
+        progress_str += f"⏱️  {elapsed:.1f}s"
+        
+        # Pad to clear previous line
+        progress_str = progress_str.ljust(80)
+        
+        sys.stdout.write(progress_str)
+        sys.stdout.flush()
+    
+    def finish(self, message="Done!"):
+        """Finish the progress display."""
+        elapsed = time.time() - self.start_time
+        print(f"\r✅ {message} ({elapsed:.1f}s)".ljust(80))
+
+
+def scan_dropbox(dbx, root_path):
     """
-    Recursively list all files and folders under the given path.
-    Returns two sets: all_folders and folders_with_content.
+    Recursively scan Dropbox for all folders and files.
+    Returns (all_folders, folders_with_content).
     """
-    print(f"\n📂 Scanning: {root_path if root_path else '/ (entire Dropbox)'}")
-    print("   This may take a while for large Dropbox accounts...")
-    print("   Progress updates every 1000 items...\n")
+    print(f"\n🔍 Scanning Dropbox: {root_path if root_path else '(root)'}")
     sys.stdout.flush()
     
+    progress = ProgressBar("Scanning")
     all_folders = set()
     folders_with_content = set()
     file_count = 0
-    batch_count = 0
     
     try:
         # Start recursive listing
         result = dbx.files_list_folder(root_path, recursive=True)
         
         while True:
-            batch_count += 1
             for entry in result.entries:
                 if isinstance(entry, FolderMetadata):
                     all_folders.add(entry.path_lower)
@@ -119,24 +163,29 @@ def list_all_entries(dbx, root_path):
                     parent_path = os.path.dirname(entry.path_lower)
                     folders_with_content.add(parent_path)
             
-            # Progress indicator - print every batch
-            total_items = len(all_folders) + file_count
-            if total_items % 1000 < 100:  # Print roughly every 1000 items
-                print(f"   Progress: {len(all_folders):,} folders, {file_count:,} files (batch {batch_count})...")
-                sys.stdout.flush()
+            # Progress indicator - streaming update
+            progress.update(len(all_folders), file_count)
             
             if not result.has_more:
                 break
             
             result = dbx.files_list_folder_continue(result.cursor)
         
-        print(f"\n   ✓ Scan complete: {len(all_folders):,} folders, {file_count:,} files")
+        progress.finish(f"Scan complete: {len(all_folders):,} folders, {file_count:,} files")
         sys.stdout.flush()
         
     except ApiError as e:
+        detailed_error = format_api_error(e)
+        logger.error(detailed_error)
+        logger.exception("API Scan stack trace:")
         print(f"\nError listing folder '{root_path}': {e}")
         if "not_found" in str(e):
             print(f"The folder '{root_path}' does not exist.")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error during scan: {e}")
+        logger.exception("Scan stack trace:")
+        print(f"\nUnexpected error during scan: {e}")
         sys.exit(1)
     
     return all_folders, folders_with_content

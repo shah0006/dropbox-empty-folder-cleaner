@@ -2,101 +2,58 @@
 
 A powerful, user-friendly tool to find and safely delete empty folders in your Dropbox account. Features a modern web-based GUI with real-time progress tracking, configurable settings, and comprehensive safety measures.
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+![Version](https://img.shields.io/badge/version-1.3.0-blue)
 ![Python](https://img.shields.io/badge/python-3.9+-green)
-![License](https://img.shields.io/badge/license-MIT-purple)
+![Logging](https://img.shields.io/badge/logging-robust-brightgreen)
 
-**Repository:** [github.com/shah0006/dropbox-empty-folder-cleaner](https://github.com/shah0006/dropbox-empty-folder-cleaner)
+## 📁 Project Structure
+
+| File | Description |
+| :--- | :--- |
+| `dropbox_cleaner_web.py` | **Primary Tool**: Modern Web-based GUI (Recommended) |
+| `dropbox_cleaner.py` | Functional CLI version for terminal use |
+| `dropbox_auth.py` | OAuth2 authentication helper tool |
+| `logger_setup.py` | Shared robust logging configuration |
+| `compare_folders.py` | Utility to compare two folders (Dropbox or Local) |
+| `deprecated/` | Legacy scripts and one-off utilities |
+| `logs/` | Detailed operation logs and stack traces |
 
 ---
 
-## 🎯 Purpose
+## 🚀 Getting Started
 
-Over time, Dropbox accounts accumulate empty folders from:
-- Deleted files leaving behind folder structures
-- Failed syncs or interrupted uploads
-- Reorganization that moved files but left folders
-- Application artifacts and temporary folders
-- System files like `.DS_Store` that don't constitute real content
+### 1. Install Dependencies
+```bash
+pip install -r requirements.txt
+```
 
-This tool helps you **identify and safely remove** these empty folders to keep your Dropbox organized, reduce clutter, and potentially improve sync performance.
+### 2. Authenticate
+Run the auth helper once to link your Dropbox account:
+```bash
+python3 dropbox_auth.py
+```
+
+### 3. Run the App
+**Web GUI (Recommended):**
+```bash
+python3 dropbox_cleaner_web.py
+```
+*Opens in your browser at http://127.0.0.1:8765*
+
+**CLI Version:**
+```bash
+python3 dropbox_cleaner.py --scan "/Folder"
+```
 
 ---
 
 ## ✨ Features
 
-### Core Functionality
-| Feature | Description |
-|---------|-------------|
-| **Smart Detection** | Finds truly empty folders (no files, no non-empty subfolders) |
-| **System File Ignore** | Treats folders with only `.DS_Store`, `Thumbs.db`, `desktop.ini` as empty |
-| **Exclusion Patterns** | Automatically skip folders like `.git`, `node_modules`, `__pycache__` |
-| **Safe Deletion Order** | Deletes deepest folders first, then works backward to parents |
-| **Trash Recovery** | Deleted folders go to Dropbox trash (recoverable for 30 days) |
-
-### Web GUI Features
-| Feature | Description |
-|---------|-------------|
-| **Real-time Progress** | Live folder/file counts as scanning progresses |
-| **Visual Progress Bar** | Red/orange while running, solid green when complete |
-| **Statistics Panel** | Total scanned, system files ignored, depth distribution |
-| **Export Results** | Export empty folder list to JSON or CSV |
-| **In-App Setup** | Configure Dropbox credentials directly in Settings |
-| **Help Documentation** | Built-in comprehensive help modal |
-
-### Safety & Security
-| Feature | Description |
-|---------|-------------|
-| **Dry-Run by Default** | Scan shows results without deleting anything |
-| **Confirmation Required** | Must explicitly confirm before any deletion |
-| **Comprehensive Logging** | All operations logged to `logs/` directory |
-| **Local Credentials** | Your API keys stored only in local `.env` file |
-| **No Third Parties** | Direct communication with Dropbox API only |
-
----
-
-## 📋 Requirements
-
-- **Python 3.9** or higher
-- **Dropbox account** (personal, not team/business)
-- **Dropbox API app** (free to create)
-
----
-
-## 🚀 Quick Start
-
-### 1. Download and Install
-
-```bash
-# Clone the repository
-git clone https://github.com/shah0006/dropbox-empty-folder-cleaner.git
-cd dropbox-empty-folder-cleaner
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
-### 2. Create a Dropbox App
-
-1. Go to [Dropbox App Console](https://www.dropbox.com/developers/apps)
-2. Click **"Create app"**
-3. Select:
-   - **"Scoped access"**
-   - **"Full Dropbox"** (access type)
-4. Name your app (e.g., "My Folder Cleaner")
-5. Go to **Permissions** tab and enable:
-   - ✅ `files.metadata.read`
-   - ✅ `files.content.write`
-6. Click **"Submit"** to save permissions
-7. Note your **App Key** and **App Secret** from the Settings tab
-
-### 3. Run the Application
-
-```bash
-python3 dropbox_cleaner_web.py
-```
-
-This opens a browser at `http://127.0.0.1:8765`
+- **Smart Detection**: Finds "truly" empty folders (no files, no non-empty subfolders).
+- **System File Logic**: Correctly handles `.DS_Store`, `Thumbs.db`, etc.
+- **Dry-Run Safety**: Always scans before deleting.
+- **Robust Logging**: Every operation is logged with full tracebacks for debugging.
+- **Local Scan Mode**: Supports cleaning both Dropbox and local filesystems.
 
 ### 4. Connect Your Dropbox (First-Time Setup)
 

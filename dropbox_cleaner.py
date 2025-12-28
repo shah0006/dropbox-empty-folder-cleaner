@@ -26,44 +26,12 @@ except ImportError:
     print("Error: dropbox package not installed.")
     print("Run: pip3 install dropbox python-dotenv")
     sys.exit(1)
+from logger_setup import setup_logger, format_api_error
 
+# Initialize robust logging
+logger, log_filename = setup_logger('DropboxCleanerCLI', 'dropbox_cleaner_cli')
 
-class ProgressBar:
-    """Simple text-based progress indicator."""
-    
-    def __init__(self, desc="Processing"):
-        self.desc = desc
-        self.folders = 0
-        self.files = 0
-        self.start_time = time.time()
-        self.spinner = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏']
-        self.spin_idx = 0
-    
-    def update(self, folders, files):
-        """Update the progress display."""
-        self.folders = folders
-        self.files = files
-        self.spin_idx = (self.spin_idx + 1) % len(self.spinner)
-        
-        elapsed = time.time() - self.start_time
-        spinner = self.spinner[self.spin_idx]
-        
-        # Create progress bar
-        bar_width = 30
-        progress_str = f"\r{spinner} {self.desc}: "
-        progress_str += f"📁 {folders:,} folders | 📄 {files:,} files | "
-        progress_str += f"⏱️  {elapsed:.1f}s"
-        
-        # Pad to clear previous line
-        progress_str = progress_str.ljust(80)
-        
-        sys.stdout.write(progress_str)
-        sys.stdout.flush()
-    
-    def finish(self, message="Done!"):
-        """Finish the progress display."""
-        elapsed = time.time() - self.start_time
-        print(f"\r✅ {message} ({elapsed:.1f}s)".ljust(80))
+from utils import ProgressBar, find_empty_folders
 
 
 def print_header():
@@ -105,8 +73,15 @@ def connect_dropbox():
         print(f"✅ Connected as: {account.name.display_name} ({account.email})")
         return dbx
     except AuthError as e:
+        logger.error(f"Authentication failed: {e}")
+        logger.exception("Authentication exception details:")
         print(f"❌ Authentication failed: {e}")
         print("   Run: python3 dropbox_auth.py")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error during connection: {e}")
+        logger.exception("Connection exception details:")
+        print(f"❌ Connection failed: {e}")
         sys.exit(1)
 
 
@@ -164,60 +139,18 @@ def scan_folder(dbx, folder_path):
         progress.finish(f"Scanned {folders_count:,} folders, {files_count:,} files")
         
     except ApiError as e:
+        detailed_error = format_api_error(e)
+        logger.error(detailed_error)
+        logger.exception("API Scan exception details:")
         print(f"\n❌ Error scanning folder: {e}")
+        sys.exit(1)
+    except Exception as e:
+        logger.error(f"Unexpected error during scan: {e}")
+        logger.exception("Scan exception details:")
+        print(f"\n❌ Unexpected error: {e}")
         sys.exit(1)
     
     return all_folders, folders_with_content, case_map
-
-
-def find_empty_folders(all_folders, folders_with_content):
-    """Identify truly empty folders (no files, no non-empty subfolders)."""
-    print("\n🔎 Analyzing folder structure...")
-    
-    # Build parent-child relationships
-    children = defaultdict(set)
-    for folder in all_folders:
-        parent = os.path.dirname(folder)
-        if parent in all_folders:
-            children[parent].add(folder)
-    
-    # Mark folders with content
-    has_content = set(folders_with_content)
-    
-    # Propagate content markers upward
-    for folder in folders_with_content:
-        current = folder
-        while current:
-            has_content.add(current)
-            parent = os.path.dirname(current)
-            if parent == current:
-                break
-            current = parent
-    
-    # Mark folders with non-empty children
-    changed = True
-    iterations = 0
-    while changed:
-        changed = False
-        iterations += 1
-        for folder in all_folders:
-            if folder in has_content:
-                continue
-            for child in children[folder]:
-                if child in has_content:
-                    has_content.add(folder)
-                    changed = True
-                    break
-    
-    # Empty folders are those without content
-    empty_folders = all_folders - has_content
-    
-    # Sort by depth (deepest first for safe deletion)
-    empty_list = sorted(empty_folders, key=lambda x: x.count('/'), reverse=True)
-    
-    print(f"   Analysis complete ({iterations} iterations)")
-    
-    return empty_list
 
 
 def display_results(empty_folders, case_map):
