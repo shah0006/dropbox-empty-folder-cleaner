@@ -1,34 +1,29 @@
-# Environment and secrets
-.env
-*.env
-
-# Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
-.Python
+.env
+.venv
+env/
 venv/
 ENV/
-
-# Reports and logs
-logs/
-*.log
-*_report_*.txt
-dropbox_report_*.txt
-
-# macOS
-.DS_Store
-.AppleDouble
-.LSOverride
-
-# IDE
+env.bak/
+venv.bak/
 .idea/
 .vscode/
-*.swp
-*.swo
-
-# Temporary files
-*.tmp
-*.bak
-
+.DS_Store
+client_secrets.json
+token.json
+credentials.json
+sync_state.db
+sync_state.db-wal
+sync_state.db-shm
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+logs/
+*.log
+.coverage
+htmlcov/
+continuation_prompt.md
+dropbox_report_*.txt

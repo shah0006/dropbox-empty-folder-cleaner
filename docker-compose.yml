@@ -1,0 +1,10 @@
+services:
+  hygiene-suite:
+    build: .
+    container_name: hygiene-suite
+    ports:
+      - "8765:8765"
+    volumes:
+      - ./db:/app/db
+      - ./:/app
+    restart: unless-stopped

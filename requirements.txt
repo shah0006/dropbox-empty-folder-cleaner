@@ -1,5 +1,13 @@
+aiofiles
 dropbox>=12.0.0
+fastapi
+jinja2
 python-dotenv>=1.0.0
-
-# Testing (included in standard library, no additional install needed)
-# unittest - included in Python standard library
+uvicorn
+google-auth-oauthlib
+google-auth-httplib2
+google-api-python-client
+fsspec
+zstandard
+s3fs
+paramiko

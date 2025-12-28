@@ -1,28 +1,22 @@
 {
-  "ignore_system_files": true,
-  "system_files": [
-    ".DS_Store",
-    "Thumbs.db",
-    "desktop.ini",
-    ".dropbox",
-    ".dropbox.attr",
-    "Icon",
-    "Icon\r",
-    ".localized",
-    "*.alias",
-    "*.lnk",
-    "*.symlink"
-  ],
-  "exclude_patterns": [
-    ".git",
-    "node_modules",
-    "__pycache__",
-    ".venv",
-    ".env"
-  ],
-  "export_format": "json",
-  "auto_open_browser": true,
-  "port": 8888,
-  "mode": "dropbox",
-  "local_path": "/Volumes/EasyStore 20 Tb/ATeam Dropbox"
+    "port": 8765,
+    "ignore_system_files": true,
+    "system_files": [
+        ".DS_Store",
+        "Thumbs.db",
+        "desktop.ini",
+        "*.alias",
+        ".dropbox",
+        ".dropbox.attr"
+    ],
+    "exclude_patterns": [
+        ".git",
+        "node_modules",
+        ".env",
+        "__pycache__",
+        ".venv"
+    ],
+    "local_path": "",
+    "export_format": "json",
+    "mode": "dropbox"
 }

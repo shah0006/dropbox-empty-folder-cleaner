@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropbox Empty Folder Cleaner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+    <div class="bg-gradient"></div>
+    
+    <!-- Top Navigation -->
+    <div class="top-nav">
+        <button type="button" class="nav-btn" id="settingsNavBtn" title="Configure Dropbox connection, system files, and more">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">Settings</span>
+        </button>
+        <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank" class="nav-btn" title="View source code and full documentation on GitHub">
+            <span class="nav-icon">📚</span>
+            <span class="nav-label">Docs</span>
+        </a>
+        <button type="button" class="nav-btn" id="helpNavBtn" title="Open help documentation and usage guide">
+            <span class="nav-icon">❓</span>
+            <span class="nav-label">Help</span>
+        </button>
+        <button type="button" class="nav-btn" id="disclaimerNavBtn" title="View important disclaimer and terms of use">
+            <span class="nav-icon">⚠️</span>
+            <span class="nav-label">Disclaimer</span>
+        </button>
+    </div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">📁</div>
+            <h1>Empty Folder Cleaner</h1>
+            <p class="subtitle">Find and remove empty folders from Dropbox or local drives</p>
+        </header>
+        
+        <div class="card">
+            <div class="card-title">
+                <span class="card-title-left">🔗 Source Selection</span>
+                <span id="connectionStatus" class="status-badge status-disconnected" 
+                      data-tooltip="Shows connection status. Green = ready, Red = not connected.">
+                    <span class="status-dot"></span>
+                    Connecting...
+                </span>
+            </div>
+            
+            <!-- Prominent Mode Switcher -->
+            <div class="mode-switcher">
+                <span class="mode-switcher-label">Scan from:</span>
+                <div class="mode-toggle-group">
+                    <button type="button" class="mode-toggle-btn active" id="modeDropboxBtn" onclick="switchMode('dropbox')"
+                            data-tooltip="Scan your Dropbox cloud storage via API">
+                        <span class="mode-icon">☁️</span>
+                        <span>Dropbox Cloud</span>
+                    </button>
+                    <button type="button" class="mode-toggle-btn" id="modeLocalBtn" onclick="switchMode('local')"
+                            data-tooltip="Scan a local folder or external drive">
+                        <span class="mode-icon">💾</span>
+                        <span>Local / External Drive</span>
+                    </button>
+                    <button type="button" class="mode-toggle-btn" id="modeCompareBtn" onclick="switchMode('compare')"
+                            data-tooltip="Compare two folders and sync/deduplicate files">
+                        <span class="mode-icon">⚖️</span>
+                        <span>Compare Folders</span>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Dropbox account info (shown in Dropbox mode) -->
+            <div id="dropboxInfo">
+                <p id="accountInfo" style="color: var(--text-secondary);"></p>
+                <div id="setupPrompt" style="display: none; margin-top: 12px;">
+                    <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 10px;">
+                        Connect your Dropbox account to get started:
+                    </p>
+                    <button class="btn btn-primary" onclick="showSetupWizard()"
+                            data-tooltip="Start the guided setup wizard to connect your Dropbox account. Takes about 2 minutes."
+                            data-tooltip-pos="bottom">
+                        🚀 Set Up Dropbox Connection
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Local path input (shown in Local mode) -->
+            <div class="local-path-inline" id="localPathSection">
+                <div class="local-path-row">
+                    <span class="local-path-label">📁 Path:</span>
+                    <input type="text" class="local-path-input" id="inlineLocalPath" 
+                           placeholder="/Volumes/ExternalDrive/Dropbox"
+                           value="">
+                    <button type="button" class="apply-path-btn" onclick="applyLocalPath()">Apply</button>
+                </div>
+                <p class="local-path-hint">Enter the full path to the folder you want to scan (e.g., /Volumes/EasyStore 20 Tb/ATeam Dropbox)</p>
+            </div>
+        </div>
+        
+        <div class="card">
+            <div class="card-title">
+                <span class="card-title-left">📂 Select Folder to Scan</span>
+                <button class="btn btn-small" onclick="manualRefreshTree()" 
+                        data-tooltip="Refresh folder tree from Dropbox" 
+                        data-tooltip-pos="left"
+                        style="font-size: 0.75em; padding: 4px 8px;">
+                    🔄 Refresh
+                </button>
+            </div>
+            <div class="folder-browser">
+                <div class="selected-folder" id="selectedFolderDisplay" 
+                     data-tooltip="Currently selected folder. Click in the tree below to change."
+                     data-tooltip-pos="bottom">
+                    <span class="selected-folder-label">Selected:</span>
+                    <span class="selected-folder-path" id="selectedPath">/ (Entire Dropbox)</span>
+                </div>
+                <div class="folder-tree-container" id="folderTreeContainer">
+                    <div class="folder-tree" id="folderTree">
+                        <div class="tree-item root-item selected" data-path="">
+                            <span class="tree-icon">🏠</span>
+                            <span class="tree-label" id="rootLabel">/ (Root)</span>
+                        </div>
+                        <div id="rootFolders" class="tree-children">
+                            <div class="tree-loading">Loading folders...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <input type="hidden" id="folderSelect" value="">
+            <div class="btn-group">
+                <button id="scanBtn" class="btn btn-primary" onclick="startScan()" 
+                        data-tooltip="Search the selected folder for empty folders. This is safe - nothing will be deleted until you click Delete."
+                        data-tooltip-pos="bottom">
+                    🔍 Scan for Empty Folders
+                </button>
+                <button id="deleteBtn" class="btn btn-danger" onclick="confirmDelete()" disabled
+                        data-tooltip="Permanently delete all found empty folders. You will be asked to confirm before deletion."
+                        data-tooltip-pos="bottom">
+                    🗑️ Delete Empty Folders
+                </button>
+                <div style="flex-grow: 1;"></div> <!-- Spacer -->
+                <button id="syncBtn" class="btn btn-secondary" onclick="startExperimentalSync()"
+                        style="background: linear-gradient(135deg, #6366f1 0%, #a855f7 100%); border: none;"
+                        data-tooltip="Run the new bidirectional sync engine (Experimental)"
+                        data-tooltip-pos="bottom">
+                    ♻️ Sync (Experimental)
+                </button>
+            </div>
+            
+            <!-- Settings Toggle -->
+            <div class="settings-row" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-color);">
+                <label class="toggle-label" data-tooltip="When enabled, folders containing only system files like .DS_Store or Thumbs.db will be treated as empty" data-tooltip-pos="bottom">
+                    <input type="checkbox" id="ignoreSystemFiles" checked onchange="updateConfig()">
+                    <span class="toggle-text">Ignore system files (.DS_Store, Thumbs.db, etc.)</span>
+                </label>
+                <button class="btn-small" id="inlineSettingsBtn" style="margin-left: auto;" 
+                        data-tooltip="Configure Dropbox connection, system files, exclusion patterns, and more"
+                        data-tooltip-pos="bottom">⚙️ Settings</button>
+            </div>
+        </div>
+        
+        <div class="card" id="progressCard" style="display: none;">
+            <div class="progress-section">
+                <div class="progress-header">
+                    <div class="progress-title">
+                        <div class="spinner" id="progressSpinner"></div>
+                        <span id="progressTitle">Scanning your Dropbox...</span>
+                    </div>
+                    <div class="progress-controls">
+                        <button id="cancelScanBtn" class="btn-cancel" onclick="cancelScan()" style="display: none;"
+                                data-tooltip="Stop the current scan">
+                            ✕ Cancel
+                        </button>
+                        <span id="progressStatus" class="status-badge status-scanning">
+                            <span class="status-dot"></span>
+                            In Progress
+                        </span>
+                    </div>
+                </div>
+                
+                <div class="progress-bar-container">
+                    <div class="progress-bar-bg"></div>
+                    <div id="progressFill" class="progress-bar-fill indeterminate">
+                        <div class="progress-bar-glow"></div>
+                    </div>
+                </div>
+                
+                <div class="stats-grid">
+                    <div class="stat-card folders active" id="folderStatCard" data-tooltip="Total number of folders checked during the scan">
+                        <div class="stat-icon">📁</div>
+                        <div class="stat-value" id="folderCount">0</div>
+                        <div class="stat-label">Folders Scanned</div>
+                    </div>
+                    <div class="stat-card files active" id="fileStatCard" data-tooltip="Legitimate files found (excludes ignored system files like .DS_Store)">
+                        <div class="stat-icon">📄</div>
+                        <div class="stat-value" id="fileCount">0</div>
+                        <div class="stat-label">Files Found</div>
+                    </div>
+                    <div class="stat-card time active" id="timeStatCard" data-tooltip="How long the scan has been running">
+                        <div class="stat-icon">⏱️</div>
+                        <div class="stat-value" id="elapsedTime">0:00</div>
+                        <div class="stat-label">Elapsed Time</div>
+                    </div>
+                    <div class="stat-card rate active" id="rateStatCard" data-tooltip="Processing speed - items checked per second">
+                        <div class="stat-icon">⚡</div>
+                        <div class="stat-value" id="itemRate">0</div>
+                        <div class="stat-label">Items/Second</div>
+                    </div>
+                    <div class="stat-card empty" id="emptyStatCard" style="display: none;" data-tooltip="Total empty folders found that can be deleted">
+                        <div class="stat-icon">🗂️</div>
+                        <div class="stat-value" id="emptyCount">0</div>
+                        <div class="stat-label">Empty Folders</div>
+                    </div>
+                </div>
+                
+                <!-- Percentage display for deletion -->
+                <div class="percent-display" id="percentDisplay" style="display: none;">
+                    <div class="percent-value" id="percentValue">0%</div>
+                    <div class="percent-label">Deletion Progress</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card" id="resultsCard" style="display: none;">
+            <div class="results-header">
+                <span class="card-title-left">📋 Results</span>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <span id="resultsCount" class="results-count" data-tooltip="Total number of empty folders found in your scan">0 empty folders</span>
+                    <button class="btn-small" onclick="exportResults('json')" 
+                            data-tooltip="Download the list of empty folders as a JSON file. Recommended before deleting for your records.">📄 JSON</button>
+                    <button class="btn-small" onclick="exportResults('csv')" 
+                            data-tooltip="Download the list of empty folders as a CSV spreadsheet. Opens in Excel, Numbers, or Google Sheets.">📊 CSV</button>
+                </div>
+            </div>
+            
+            <!-- View Toggle - Empty Folders vs Files Found -->
+            <div class="results-view-toggle">
+                <button id="viewEmptyFoldersBtn" class="view-toggle-btn active" onclick="switchResultsView('folders')"
+                        data-tooltip="Show empty folders that can be deleted">
+                    🗂️ Empty Folders <span id="emptyFoldersBadge" class="toggle-badge">0</span>
+                </button>
+                <button id="viewFilesBtn" class="view-toggle-btn" onclick="switchResultsView('files')"
+                        data-tooltip="Show all files found during the scan">
+                    📄 Files Found <span id="filesFoundBadge" class="toggle-badge">0</span>
+                </button>
+                <button id="viewConflictsBtn" class="view-toggle-btn" onclick="switchResultsView('conflicts')"
+                        data-tooltip="Manage conflicted copies">
+                    ⚠️ Conflicts <span id="conflictsBadge" class="toggle-badge">0</span>
+                </button>
+                <button id="viewInsightsBtn" class="view-toggle-btn" onclick="switchResultsView('insights')"
+                        data-tooltip="Visual space analysis and folder distributions">
+                    🔭 Visual Insights <span class="toggle-badge">NEW</span>
+                </button>
+            </div>
+            
+            <!-- Statistics Panel -->
+            <div id="statsPanel" class="stats-panel" style="display: none;">
+                <div class="stats-row">
+                    <span class="stat-item"><span class="stat-icon">📁</span> Scanned: <strong id="statScanned">0</strong></span>
+                    <span class="stat-item"><span class="stat-icon">🚫</span> System files ignored: <strong id="statIgnored">0</strong></span>
+                    <span class="stat-item"><span class="stat-icon">📊</span> Deepest: <strong id="statDeepest">0</strong> levels</span>
+                </div>
+            </div>
+            
+            <div id="resultsList" class="results-list"></div>
+            <div class="warning-box" id="warningBox" style="display: none;">
+                <span class="warning-icon">⚠️</span>
+                <div>
+                    <strong>Warning:</strong> Deletion cannot be undone directly. Deleted folders will go to Dropbox trash where they can be recovered for 30 days.
+                </div>
+            </div>
+        </div>
+        
+        <!-- ================================================================= -->
+        <!-- FOLDER COMPARISON SECTION -->
+        <!-- ================================================================= -->
+        <div id="compareSection" style="display: none;">
+            <div class="card">
+                <div class="card-title">
+                    <span class="card-title-left">⚖️ Folder Comparison</span>
+                    <span class="status-badge status-connected" id="compareStatus">
+                        <span class="status-dot"></span>
+                        Ready
+                    </span>
+                </div>
+                
+                <!-- Collapsible How it works - compact version -->
+                <details class="how-it-works-details" style="margin-bottom: 12px;">
+                    <summary style="cursor: pointer; color: var(--accent-cyan); font-size: 0.85em; padding: 8px 12px; background: rgba(0,212,255,0.05); border-radius: 6px; border: 1px solid rgba(0,212,255,0.2);">
+                        ℹ️ How it works (click to expand)
+                    </summary>
+                    <div style="padding: 10px 12px; font-size: 0.8em; color: var(--text-secondary); line-height: 1.4; background: rgba(0,0,0,0.2); border-radius: 0 0 6px 6px; margin-top: -1px;">
+                        <span style="color: var(--accent-red);">🗑️ DELETE</span> from LEFT if same file exists in RIGHT (same/smaller size) • 
+                        <span style="color: var(--accent-green);">📤 COPY</span> to RIGHT if newer & larger • 
+                        <span style="color: var(--accent-cyan);">✓ KEEP</span> if only in LEFT
+                    </div>
+                </details>
+                
+                <!-- Compact Action Summary -->
+                <div class="action-summary-compact" style="display: flex; justify-content: center; align-items: center; gap: 20px; padding: 10px; background: rgba(0,0,0,0.2); border-radius: 8px; margin-bottom: 12px; font-size: 0.85em;">
+                    <span style="color: var(--accent-red);">🗑️ DELETE from: <strong id="summaryDeletePath">(select LEFT)</strong></span>
+                    <span style="color: var(--text-secondary);">→</span>
+                    <span style="color: var(--accent-green);">✅ PRESERVE: <strong id="summaryPreservePath">(select RIGHT)</strong></span>
+                </div>
+                
+                <div class="compare-folders-grid" style="display: grid; grid-template-columns: 1fr auto 1fr; gap: 16px; align-items: start;">
+                    <!-- LEFT Folder Selection -->
+                    <div class="compare-folder-panel" id="leftPanel" style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; border: 2px solid rgba(239, 68, 68, 0.4);">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="font-size: 1.2em;">🗑️</span>
+                            <h3 style="margin: 0; color: var(--accent-red); font-size: 1em;" id="leftPanelTitle">SOURCE (Delete From)</h3>
+                        </div>
+                        
+                        <div class="compare-mode-toggle" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <button type="button" class="compare-mode-btn active" id="leftModeDropbox" onclick="setCompareMode('left', 'dropbox')">
+                                ☁️ Dropbox
+                            </button>
+                            <button type="button" class="compare-mode-btn" id="leftModeLocal" onclick="setCompareMode('left', 'local')">
+                                💾 Local
+                            </button>
+                        </div>
+                        
+                        <div id="leftDropboxPath">
+                            <div class="selected-folder" style="margin-bottom: 8px;">
+                                <span style="font-size: 0.8em; color: var(--text-secondary);">Selected:</span>
+                                <span id="leftSelectedPath" style="color: var(--accent-orange); font-weight: 500;">/ (Root)</span>
+                            </div>
+                            <input type="hidden" id="leftFolderPath" value="">
+                            <div class="compare-folder-tree-container" id="leftFolderTreeContainer">
+                                <div class="folder-tree" id="leftFolderTree">
+                                    <div class="tree-item root-item selected" data-path="" data-side="left">
+                                        <span class="tree-icon">🏠</span>
+                                        <span class="tree-label">/ (Root)</span>
+                                    </div>
+                                    <div id="leftRootFolders" class="tree-children">
+                                        <div class="tree-loading">Loading folders...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="leftLocalPath" style="display: none;">
+                            <input type="text" id="leftLocalFolderPath" class="compare-path-input" 
+                                   placeholder="/Volumes/Drive/Folder"
+                                   style="width: 100%;">
+                            <p style="font-size: 0.75em; color: var(--text-secondary); margin-top: 6px;">
+                                Enter full local path (or drag & drop folder)
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Direction Arrow Button -->
+                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding-top: 60px;">
+                        <button type="button" id="swapFoldersBtn" class="direction-arrow-btn" onclick="swapFolders()" 
+                                title="Click to swap source and master folders">
+                            <span id="directionArrow">→</span>
+                        </button>
+                        <div style="font-size: 0.7em; color: var(--text-secondary); margin-top: 8px; text-align: center;">
+                            <span id="arrowActionLabel">Compare LEFT → RIGHT</span><br>
+                            <span style="font-size: 0.9em; color: var(--accent-cyan);">Click to flip</span>
+                        </div>
+                    </div>
+                    
+                    <!-- RIGHT Folder Selection -->
+                    <div class="compare-folder-panel" id="rightPanel" style="background: var(--bg-secondary); padding: 12px; border-radius: 10px; border: 2px solid rgba(34, 197, 94, 0.4);">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="font-size: 1.2em;">✅</span>
+                            <h3 style="margin: 0; color: var(--accent-green); font-size: 1em;" id="rightPanelTitle">MASTER (Preserve)</h3>
+                        </div>
+                        
+                        <div class="compare-mode-toggle" style="display: flex; gap: 8px; margin-bottom: 12px;">
+                            <button type="button" class="compare-mode-btn active" id="rightModeDropbox" onclick="setCompareMode('right', 'dropbox')">
+                                ☁️ Dropbox
+                            </button>
+                            <button type="button" class="compare-mode-btn" id="rightModeLocal" onclick="setCompareMode('right', 'local')">
+                                💾 Local
+                            </button>
+                        </div>
+                        
+                        <div id="rightDropboxPath">
+                            <div class="selected-folder" style="margin-bottom: 8px;">
+                                <span style="font-size: 0.8em; color: var(--text-secondary);">Selected:</span>
+                                <span id="rightSelectedPath" style="color: var(--accent-green); font-weight: 500;">/ (Root)</span>
+                            </div>
+                            <input type="hidden" id="rightFolderPath" value="">
+                            <div class="compare-folder-tree-container" id="rightFolderTreeContainer">
+                                <div class="folder-tree" id="rightFolderTree">
+                                    <div class="tree-item root-item selected" data-path="" data-side="right">
+                                        <span class="tree-icon">🏠</span>
+                                        <span class="tree-label">/ (Root)</span>
+                                    </div>
+                                    <div id="rightRootFolders" class="tree-children">
+                                        <div class="tree-loading">Loading folders...</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="rightLocalPath" style="display: none;">
+                            <input type="text" id="rightLocalFolderPath" class="compare-path-input" 
+                                   placeholder="/Volumes/Drive/Folder"
+                                   style="width: 100%;">
+                            <p style="font-size: 0.75em; color: var(--text-secondary); margin-top: 6px;">
+                                Enter full local path (or drag & drop folder)
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Mode Selection -->
+                <div class="mode-toggle-container" style="margin-top: 20px;">
+                    <span class="mode-toggle-label">Mode:</span>
+                    <div class="mode-toggle-switch">
+                        <button type="button" class="mode-toggle-option active-preview" id="modePreviewBtn" onclick="setCompareRunMode('preview')">
+                            🛡️ Preview Only
+                        </button>
+                        <button type="button" class="mode-toggle-option" id="modeLiveBtn" onclick="setCompareRunMode('live')">
+                            ⚡ Live (Delete)
+                        </button>
+                    </div>
+                    <div id="modeDescription" style="flex: 1; font-size: 0.85em; color: var(--accent-green);">
+                        Safe mode - shows what would happen without making changes
+                    </div>
+                </div>
+                
+                <div class="btn-group" style="margin-top: 16px; align-items: center;">
+                    <button id="compareStartBtn" class="btn btn-primary" onclick="startComparison()">
+                        🔍 Scan & Compare Folders
+                    </button>
+                    <button id="compareCancelBtn" class="btn btn-secondary" onclick="cancelComparison()" style="display: none;">
+                        ✕ Cancel
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Comparison Progress Card -->
+            <div class="card" id="compareProgressCard" style="display: none;">
+                <div class="progress-section">
+                    <div class="progress-header">
+                        <div class="progress-title">
+                            <div class="spinner" id="compareProgressSpinner"></div>
+                            <span id="compareProgressTitle">Scanning folders...</span>
+                        </div>
+                        <span id="compareProgressStatus" class="status-badge status-scanning">
+                            <span class="status-dot"></span>
+                            In Progress
+                        </span>
+                    </div>
+                    
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-bg"></div>
+                        <div id="compareProgressFill" class="progress-bar-fill indeterminate">
+                            <div class="progress-bar-glow"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="stats-grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <div class="stat-card active">
+                            <div class="stat-icon">📁</div>
+                            <div class="stat-value" id="compareLeftCount">0</div>
+                            <div class="stat-label">LEFT Files</div>
+                        </div>
+                        <div class="stat-card active">
+                            <div class="stat-icon">📁</div>
+                            <div class="stat-value" id="compareRightCount">0</div>
+                            <div class="stat-label">RIGHT Files</div>
+                        </div>
+                        <div class="stat-card active">
+                            <div class="stat-icon">⏱️</div>
+                            <div class="stat-value" id="compareElapsed">0:00</div>
+                            <div class="stat-label">Elapsed</div>
+                        </div>
+                    </div>
+                    
+                    <div id="compareCurrentFile" style="margin-top: 12px; font-size: 0.8em; color: var(--text-secondary); text-align: center; word-break: break-all;"></div>
+                    
+                    <!-- Execution Log (streaming) -->
+                    <div id="executionLogContainer" style="display: none; margin-top: 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                            <span style="color: var(--accent-cyan);">📋</span>
+                            <span style="font-size: 0.9em; font-weight: bold; color: var(--text-primary);">Live Execution Log</span>
+                        </div>
+                        <div id="executionLogContent" style="
+                            background: rgba(0, 0, 0, 0.4);
+                            border: 1px solid var(--border-color);
+                            border-radius: 8px;
+                            padding: 12px;
+                            max-height: 200px;
+                            overflow-y: auto;
+                            font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
+                            font-size: 0.8em;
+                            line-height: 1.6;
+                        "></div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Comparison Results Card -->
+            <div class="card" id="compareResultsCard" style="display: none;">
+                <div class="results-header">
+                    <span class="card-title-left">📊 Comparison Results</span>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <button class="btn-small" onclick="exportCompareResults('json')">📄 Export JSON</button>
+                    </div>
+                </div>
+                
+                <!-- Summary Stats -->
+                <div id="compareSummary" class="compare-summary" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px;">
+                    <div class="summary-stat" style="background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold; color: var(--accent-red);" id="summaryDeleteCount">0</div>
+                        <div style="font-size: 0.8em; color: var(--text-secondary);">To Delete</div>
+                        <div style="font-size: 0.75em; color: var(--accent-red);" id="summaryDeleteSize">0 B</div>
+                    </div>
+                    <div class="summary-stat" style="background: rgba(34,197,94,0.1); border: 1px solid rgba(34,197,94,0.3); padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold; color: var(--accent-green);" id="summaryCopyCount">0</div>
+                        <div style="font-size: 0.8em; color: var(--text-secondary);">To Copy</div>
+                        <div style="font-size: 0.75em; color: var(--accent-green);" id="summaryCopySize">0 B</div>
+                    </div>
+                    <div class="summary-stat" style="background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.3); padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold; color: var(--accent-cyan);" id="summaryLeftOnlyCount">0</div>
+                        <div style="font-size: 0.8em; color: var(--text-secondary);">LEFT Only</div>
+                        <div style="font-size: 0.75em; color: var(--text-secondary);">(No action)</div>
+                    </div>
+                    <div class="summary-stat" style="background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.3); padding: 16px; border-radius: 12px; text-align: center;">
+                        <div style="font-size: 2em; font-weight: bold; color: var(--accent-purple);" id="summaryRightOnlyCount">0</div>
+                        <div style="font-size: 0.8em; color: var(--text-secondary);">RIGHT Only</div>
+                        <div style="font-size: 0.75em; color: var(--text-secondary);">(No action)</div>
+                    </div>
+                </div>
+                
+                <!-- Results Tabs -->
+                <div class="results-view-toggle" style="margin-bottom: 16px;">
+                    <button id="viewDeleteBtn" class="view-toggle-btn active" onclick="switchCompareView('delete')">
+                        🗑️ To Delete <span id="deleteBadge" class="toggle-badge">0</span>
+                    </button>
+                    <button id="viewCopyBtn" class="view-toggle-btn" onclick="switchCompareView('copy')">
+                        📤 To Copy <span id="copyBadge" class="toggle-badge">0</span>
+                    </button>
+                    <button id="viewLeftOnlyBtn" class="view-toggle-btn" onclick="switchCompareView('leftonly')">
+                        📁 LEFT Only <span id="leftOnlyBadge" class="toggle-badge">0</span>
+                    </button>
+                </div>
+                
+                <!-- Results List -->
+                <div id="compareResultsList" class="results-list" style="max-height: 400px; overflow-y: auto;"></div>
+                
+                <!-- Warning and Execute -->
+                <div class="warning-box" id="compareWarningBox" style="margin-top: 16px;">
+                    <span class="warning-icon">⚠️</span>
+                    <div>
+                        <strong>Before executing:</strong>
+                        <ul style="margin: 8px 0 0 0; padding-left: 20px;">
+                            <li>Review the files to be deleted and copied above</li>
+                            <li>Deletions are <strong>permanent</strong> (for Dropbox, goes to trash for 30 days)</li>
+                            <li>Copies will <strong>overwrite</strong> existing files in the RIGHT folder</li>
+                            <li>Export results to JSON for your records before proceeding</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="btn-group" style="margin-top: 20px; align-items: center;">
+                    <button id="compareResetBtn" class="btn btn-secondary" onclick="resetComparison()">
+                        🔄 New Comparison
+                    </button>
+                    <div style="flex: 1;"></div>
+                    
+                    <!-- Preview Mode Actions -->
+                    <div id="previewModeActions">
+                        <span style="color: var(--accent-green); font-size: 0.9em; margin-right: 12px;">
+                            🛡️ Preview complete - no changes made
+                        </span>
+                        <button id="switchToLiveBtn" class="btn btn-warning" onclick="setCompareRunMode('live'); showToast('Switched to LIVE mode - click Execute to apply changes', 'warning');">
+                            ⚡ Switch to Live Mode
+                        </button>
+                    </div>
+                    
+                    <!-- Live Mode Actions -->
+                    <div id="liveModeActions" style="display: none;">
+                        <span style="color: var(--accent-red); font-size: 0.9em; margin-right: 12px; animation: pulse-text 2s infinite;">
+                            ⚠️ LIVE MODE - Changes will be permanent!
+                        </span>
+                        <button id="compareExecuteBtn" class="btn btn-danger" onclick="confirmCompareExecute()">
+                            🗑️ Execute Deletions Now
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- ================================================================= -->
+        <!-- END FOLDER COMPARISON SECTION -->
+        <!-- ================================================================= -->
+        
+        <footer>
+            <div class="footer-links">
+                <a href="#" onclick="showHelp(); return false;" data-tooltip="View usage guide and documentation">📖 Help Guide</a>
+                <span class="footer-sep">•</span>
+                <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner#readme" target="_blank" data-tooltip="Read full documentation on GitHub">📚 Full Documentation</a>
+                <span class="footer-sep">•</span>
+                <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner/issues" target="_blank" data-tooltip="Report a bug or request a feature">🐛 Report Issue</a>
+                <span class="footer-sep">•</span>
+                <a href="#" onclick="showSettings(); return false;" data-tooltip="Configure app settings">⚙️ Settings</a>
+            </div>
+            <div class="footer-disclaimer">
+                ⚠️ <strong>Disclaimer:</strong> Use at your own risk. The developer assumes no responsibility for data loss or damage.
+                <a href="#" onclick="showDisclaimer(); return false;">Read full disclaimer</a>
+            </div>
+            <div class="footer-credits">
+                v1.2.3 • <span id="nextRunContainer" style="display:none; color: var(--accent-yellow);">Next scan: <span id="nextRunTime"></span> • </span>Built for Tushar Shah • <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank">GitHub</a>
+            </div>
+        </footer>
+    </div>
+    
+    <div class="modal-overlay" id="deleteModal">
+        <div class="modal">
+            <div class="modal-icon">⚠️</div>
+            <h2 style="color: var(--accent-red);">Confirm Deletion</h2>
+            <p>
+                You are about to delete <strong id="deleteCount">0</strong> empty folder(s).
+            </p>
+            <div class="delete-warning-box">
+                <strong>⚠️ Important:</strong>
+                <ul>
+                    <li>Folders will be moved to Dropbox trash</li>
+                    <li>Recovery is possible for <strong>30 days only</strong></li>
+                    <li>After 30 days, deletion is <strong>permanent</strong></li>
+                    <li>This action cannot be undone after trash is emptied</li>
+                </ul>
+            </div>
+            <p style="font-size: 0.85em; color: var(--text-secondary); margin-top: 16px;">
+                💡 <strong>Tip:</strong> Export results to JSON/CSV before deleting for your records.
+            </p>
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                <button class="btn btn-danger" onclick="executeDelete()">
+                    🗑️ Yes, Delete Folders
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal settings-modal">
+            <div class="modal-icon">⚙️</div>
+            <h2>Settings</h2>
+            
+            <div class="settings-section" style="background: linear-gradient(135deg, rgba(0,200,150,0.1), rgba(0,100,200,0.1)); border: 1px solid var(--accent-cyan);">
+                <h3>🔀 Operating Mode</h3>
+                <p class="settings-desc">Choose where to scan for empty folders.</p>
+                
+                <div class="mode-toggle-container" style="display: flex; gap: 10px; margin: 15px 0;">
+                    <label class="mode-option" style="flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; border: 2px solid var(--border-color); transition: all 0.2s;">
+                        <input type="radio" name="operatingMode" value="dropbox" id="modeDropbox" onchange="toggleModeUI()">
+                        <span style="font-size: 1.5em;">☁️</span>
+                        <span style="display: block; font-weight: bold; margin-top: 5px;">Dropbox API</span>
+                        <span style="display: block; font-size: 0.8em; opacity: 0.7;">Scan online Dropbox</span>
+                    </label>
+                    <label class="mode-option" style="flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; border: 2px solid var(--border-color); transition: all 0.2s;">
+                        <input type="radio" name="operatingMode" value="local" id="modeLocal" onchange="toggleModeUI()">
+                        <span style="font-size: 1.5em;">💾</span>
+                        <span style="display: block; font-weight: bold; margin-top: 5px;">Local Filesystem</span>
+                        <span style="display: block; font-size: 0.8em; opacity: 0.7;">Scan local/external drive</span>
+                    </label>
+                    <label class="mode-option" style="flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; border: 2px solid var(--border-color); transition: all 0.2s;">
+                        <input type="radio" name="operatingMode" value="google" id="modeGoogle" onchange="toggleModeUI()">
+                        <span style="font-size: 1.5em;">🚙</span>
+                        <span style="display: block; font-weight: bold; margin-top: 5px;">Google Drive</span>
+                        <span style="display: block; font-size: 0.8em; opacity: 0.7;">Scan Google Drive</span>
+                    </label>
+                </div>
+                
+                <div id="localPathSettings" style="display: none; margin-top: 15px;">
+                    <div class="settings-list-container">
+                        <label class="settings-label">📁 Local Path:</label>
+                        <input type="text" id="settingsLocalPath" class="settings-input-full" 
+                               placeholder="/Volumes/ExternalDrive/Dropbox"
+                               style="font-family: monospace;">
+                        <span class="settings-hint">Full path to the folder you want to scan (e.g., /Volumes/EasyStore 20 Tb/ATeam Dropbox)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-section" id="dropboxSettingsSection">
+                <h3>🔐 Dropbox Connection</h3>
+                <p class="settings-desc">Configure your Dropbox API credentials. <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color: var(--accent-cyan);">Create a Dropbox App</a></p>
+                
+                <div class="connection-status" id="settingsConnectionStatus">
+                    <span class="status-indicator connected"></span>
+                    <span id="settingsAccountInfo">Connected</span>
+                </div>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">App Key:</label>
+                    <input type="text" id="settingsAppKey" class="settings-input-full" placeholder="Your Dropbox App Key">
+                </div>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">App Secret:</label>
+                    <div style="position: relative;">
+                        <input type="password" id="settingsAppSecret" class="settings-input-full" placeholder="Your Dropbox App Secret">
+                        <button class="btn-tiny" onclick="togglePassword('settingsAppSecret')">Show</button>
+                    </div>
+                </div>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">Refresh Token:</label>
+                    <div style="position: relative;">
+                        <input type="password" id="settingsRefreshToken" class="settings-input-full" placeholder="Your Dropbox Refresh Token">
+                        <button class="btn-tiny" onclick="togglePassword('settingsRefreshToken')">Show</button>
+                    </div>
+                </div>
+
+                <div class="btn-group" style="margin-top: 10px;">
+                    <button class="btn-small" onclick="startAuth()">🔑 Get New Token</button>
+                    <button class="btn-small" onclick="saveCredentials()">💾 Save Credentials</button>
+                </div>
+                
+                <div class="settings-hint" style="margin-top: 8px;">
+                    <details>
+                        <summary style="cursor: pointer; color: var(--accent-cyan);">📖 How to set up Dropbox API</summary>
+                        <ol style="margin-top: 8px; padding-left: 20px; line-height: 1.8;">
+                            <li>Go to <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color: var(--accent-cyan);">Dropbox App Console</a></li>
+                            <li>Click "Create app"</li>
+                            <li>Select "Scoped access" → "Full Dropbox"</li>
+                            <li>Name your app (e.g., "My Folder Cleaner")</li>
+                            <li>Go to Permissions tab, enable:<br>
+                                • <code>files.metadata.read</code><br>
+                                • <code>files.content.write</code></li>
+                            <li>Click "Submit" to save permissions</li>
+                            <li>Copy App Key and App Secret here</li>
+                            <li>Click "Get New Token" to authorize</li>
+                        </ol>
+                    </details>
+                </div>
+            </div>
+
+            <div class="settings-section" id="googleSettingsSection" style="display: none;">
+                <h3>🔐 Google Drive Connection</h3>
+                <p class="settings-desc">Place <code>client_secrets.json</code> in the app directory. <a href="https://console.cloud.google.com/" target="_blank" style="color: var(--accent-cyan);">Google Console</a></p>
+                
+                <div class="connection-status" id="settingsGoogleStatus">
+                    <span class="status-indicator disconnected"></span>
+                    <span id="settingsGoogleAccount">Not Connected</span>
+                </div>
+                
+                <div class="btn-group" style="margin-top: 15px;">
+                    <button class="btn btn-primary" onclick="connectGoogle()">Connect / Login</button>
+                </div>
+            </div>
+            
+            <div class="settings-section" style="background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(200, 100, 0, 0.1)); border: 1px solid var(--accent-yellow);">
+                <h3>🤖 Automation</h3>
+                <p class="settings-desc">Schedule background maintenance scans.</p>
+                
+                <label class="toggle-label" style="display: flex; gap: 10px; align-items: center; cursor: pointer;">
+                    <input type="checkbox" id="settingsScheduleEnabled" onchange="toggleScheduleOptions()">
+                    <span class="toggle-text" style="font-weight: bold;">Enable Scheduled Watchdog</span>
+                </label>
+                
+                <div id="scheduleOptions" style="display: none; margin-top: 15px;">
+                    <div class="settings-list-container">
+                        <label class="settings-label">Scan Frequency (Hours):</label>
+                        <input type="number" id="settingsScheduleInterval" class="settings-input" value="24" min="1" max="168">
+                        <span class="settings-hint">How often to check for empty folders (e.g., 24 = daily, 168 = weekly)</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>🗂️ System File Handling</h3>
+                <p class="settings-desc">Folders containing only these files will be considered empty.</p>
+                
+                <label class="toggle-label" style="margin: 12px 0;">
+                    <input type="checkbox" id="settingsIgnoreSystem" checked>
+                    <span class="toggle-text">Enable system file ignore</span>
+                </label>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">System files to ignore:</label>
+                    <div id="systemFilesCheckboxes" class="checkbox-grid">
+                        <!-- Checkboxes generated by JavaScript -->
+                    </div>
+                    <div class="add-custom-row">
+                        <input type="text" id="customSystemFile" class="add-custom-input" placeholder="Add custom pattern (e.g., *.tmp)">
+                        <button type="button" class="add-custom-btn" onclick="addCustomSystemFile()">+ Add</button>
+                    </div>
+                    <span class="settings-hint">Check patterns to ignore. Wildcards supported (*.alias, *.lnk)</span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>🚫 Exclusion Patterns</h3>
+                <p class="settings-desc">Folders matching these names will be skipped during scanning.</p>
+                
+                <div class="settings-list-container">
+                    <label class="settings-label">Folder names to exclude:</label>
+                    <textarea id="excludePatternsList" class="settings-textarea" rows="3" placeholder="One pattern per line"></textarea>
+                    <span class="settings-hint">One folder name per line (e.g., .git, node_modules)</span>
+                </div>
+            </div>
+            
+            <div class="settings-section">
+                <h3>🌐 Application</h3>
+                <div class="settings-row-inline">
+                    <label>Server Port:</label>
+                    <input type="number" id="settingsPort" class="settings-input" value="8765" min="1024" max="65535">
+                </div>
+                <div class="settings-row-inline">
+                    <label>Default Export Format:</label>
+                    <select id="settingsExportFormat" class="settings-select">
+                        <option value="json">JSON</option>
+                        <option value="csv">CSV</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="resetSettings()">↺ Reset to Defaults</button>
+                <button class="btn btn-secondary" onclick="closeSettings()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Auth Modal -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal">
+            <div class="modal-icon">🔑</div>
+            <h2>Authorize Dropbox</h2>
+            <div id="authStep1">
+                <p>Click the button below to open Dropbox authorization. After authorizing, copy the code and paste it below.</p>
+                <div class="btn-group" style="margin: 20px 0;">
+                    <button class="btn btn-primary" onclick="openAuthUrl()">🔗 Open Dropbox Authorization</button>
+                </div>
+                <div class="settings-list-container">
+                    <label class="settings-label">Paste authorization code here:</label>
+                    <input type="text" id="authCode" class="settings-input-full" placeholder="Paste the code from Dropbox">
+                </div>
+                <div class="btn-group" style="margin-top: 16px;">
+                    <button class="btn btn-secondary" onclick="closeAuth()">Cancel</button>
+                    <button class="btn btn-primary" onclick="exchangeCode()">✓ Complete Authorization</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Setup Wizard Modal -->
+    <div class="modal-overlay" id="setupWizard">
+        <div class="modal wizard-modal">
+            <div class="wizard-header">
+                <div class="wizard-icon">🚀</div>
+                <h2>Welcome! Let's Get Started</h2>
+                <p class="wizard-subtitle">Follow these steps to connect your Dropbox account</p>
+            </div>
+            
+            <div class="wizard-progress">
+                <div class="wizard-step" id="wizStep1Indicator">
+                    <div class="step-number">1</div>
+                    <div class="step-label">Create App</div>
+                </div>
+                <div class="wizard-step-line"></div>
+                <div class="wizard-step" id="wizStep2Indicator">
+                    <div class="step-number">2</div>
+                    <div class="step-label">Permissions</div>
+                </div>
+                <div class="wizard-step-line"></div>
+                <div class="wizard-step" id="wizStep3Indicator">
+                    <div class="step-number">3</div>
+                    <div class="step-label">Credentials</div>
+                </div>
+                <div class="wizard-step-line"></div>
+                <div class="wizard-step" id="wizStep4Indicator">
+                    <div class="step-number">4</div>
+                    <div class="step-label">Authorize</div>
+                </div>
+            </div>
+            
+            <!-- Step 1: Create Dropbox App -->
+            <div class="wizard-content" id="wizStep1">
+                <h3>Step 1: Create a Dropbox App</h3>
+                <div class="wizard-instructions">
+                    <p>First, you need to create a free Dropbox developer app:</p>
+                    <ol>
+                        <li>Click the button below to open the Dropbox App Console</li>
+                        <li>Sign in to your Dropbox account if prompted</li>
+                        <li>Click <strong>"Create app"</strong></li>
+                        <li>Select <strong>"Scoped access"</strong></li>
+                        <li>Select <strong>"Full Dropbox"</strong> for access type</li>
+                        <li>Enter a name for your app (e.g., "My Folder Cleaner")</li>
+                        <li>Click <strong>"Create app"</strong></li>
+                    </ol>
+                    <div class="wizard-action">
+                        <a href="https://www.dropbox.com/developers/apps/create" target="_blank" class="btn btn-primary">
+                            🔗 Open Dropbox App Console
+                        </a>
+                    </div>
+                    <div class="wizard-note">
+                        <strong>💡 Tip:</strong> Keep the Dropbox page open - you'll need information from it in the next steps.
+                    </div>
+                </div>
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" onclick="closeWizard()">Cancel</button>
+                    <button class="btn btn-primary" onclick="wizardNext(2)">I've Created My App →</button>
+                </div>
+            </div>
+            
+            <!-- Step 2: Set Permissions -->
+            <div class="wizard-content" id="wizStep2" style="display: none;">
+                <h3>Step 2: Set App Permissions</h3>
+                <div class="wizard-instructions">
+                    <p>Now configure the permissions your app needs:</p>
+                    <ol>
+                        <li>In your new app's page, click the <strong>"Permissions"</strong> tab</li>
+                        <li>Find and <strong>check these two permissions</strong>:</li>
+                    </ol>
+                    <div class="permission-boxes">
+                        <div class="permission-box">
+                            <div class="permission-check">☑️</div>
+                            <div class="permission-info">
+                                <code>files.metadata.read</code>
+                                <span>Read file and folder information</span>
+                            </div>
+                        </div>
+                        <div class="permission-box">
+                            <div class="permission-check">☑️</div>
+                            <div class="permission-info">
+                                <code>files.content.write</code>
+                                <span>Delete files and folders</span>
+                            </div>
+                        </div>
+                    </div>
+                    <ol start="3">
+                        <li>Scroll down and click <strong>"Submit"</strong> to save the permissions</li>
+                    </ol>
+                    <div class="wizard-warning">
+                        ⚠️ <strong>Important:</strong> You must enable BOTH permissions and click Submit, or the app won't work!
+                    </div>
+                </div>
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" onclick="wizardBack(1)">← Back</button>
+                    <button class="btn btn-primary" onclick="wizardNext(3)">Permissions Set →</button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Enter Credentials -->
+            <div class="wizard-content" id="wizStep3" style="display: none;">
+                <h3>Step 3: Enter Your App Credentials</h3>
+                <div class="wizard-instructions">
+                    <p>Now copy your app's credentials from Dropbox:</p>
+                    <ol>
+                        <li>Go back to the <strong>"Settings"</strong> tab of your Dropbox app</li>
+                        <li>Find and copy your <strong>App key</strong> and <strong>App secret</strong></li>
+                        <li>Paste them in the fields below:</li>
+                    </ol>
+                    <div class="wizard-inputs">
+                        <div class="wizard-input-group">
+                            <label>App Key:</label>
+                            <input type="text" id="wizardAppKey" class="settings-input-full" placeholder="e.g., abc123xyz789">
+                            <span class="input-hint">Found in your app's Settings tab</span>
+                        </div>
+                        <div class="wizard-input-group">
+                            <label>App Secret:</label>
+                            <div style="position: relative;">
+                                <input type="password" id="wizardAppSecret" class="settings-input-full" placeholder="e.g., xyz789abc123secret">
+                                <button class="btn-tiny" onclick="togglePassword('wizardAppSecret')" style="top: 12px;">👁️</button>
+                            </div>
+                            <span class="input-hint">Click "Show" next to App secret in Dropbox to reveal it</span>
+                        </div>
+                    </div>
+                    <div class="wizard-note">
+                        <strong>🔐 Security:</strong> Your credentials are stored only on your computer in a local .env file.
+                    </div>
+                </div>
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" onclick="wizardBack(2)">← Back</button>
+                    <button class="btn btn-primary" onclick="wizardValidateAndNext()">Continue →</button>
+                </div>
+            </div>
+            
+            <!-- Step 4: Authorize -->
+            <div class="wizard-content" id="wizStep4" style="display: none;">
+                <h3>Step 4: Authorize the Connection</h3>
+                <div class="wizard-instructions">
+                    <p>Final step - authorize this app to access your Dropbox:</p>
+                    <ol>
+                        <li>Click the button below to open Dropbox authorization</li>
+                        <li>Click <strong>"Allow"</strong> to grant access</li>
+                        <li>Dropbox will show you an <strong>authorization code</strong></li>
+                        <li>Copy that code and paste it below</li>
+                    </ol>
+                    <div class="wizard-action">
+                        <button class="btn btn-primary" onclick="wizardOpenAuth()">🔗 Authorize with Dropbox</button>
+                    </div>
+                    <div class="wizard-input-group" style="margin-top: 20px;">
+                        <label>Authorization Code:</label>
+                        <input type="text" id="wizardAuthCode" class="settings-input-full" placeholder="Paste the code from Dropbox here">
+                        <span class="input-hint">Copy the entire code shown by Dropbox after clicking "Allow"</span>
+                    </div>
+                </div>
+                <div class="wizard-nav">
+                    <button class="btn btn-secondary" onclick="wizardBack(3)">← Back</button>
+                    <button class="btn btn-primary" onclick="wizardComplete()">✓ Complete Setup</button>
+                </div>
+            </div>
+            
+            <!-- Success -->
+            <div class="wizard-content" id="wizStepSuccess" style="display: none;">
+                <div class="wizard-success">
+                    <div class="success-icon">🎉</div>
+                    <h3>Setup Complete!</h3>
+                    <p class="success-account" id="wizardSuccessAccount">Connected as: Loading...</p>
+                    <p>You're all set! You can now scan your Dropbox for empty folders.</p>
+                    <div class="wizard-action">
+                        <button class="btn btn-primary" onclick="closeWizard()">Start Using the App</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Disclaimer Modal -->
+    <div class="modal-overlay" id="disclaimerModal">
+        <div class="modal disclaimer-modal">
+            <div class="modal-icon">⚠️</div>
+            <h2>Important Disclaimer</h2>
+            
+            <div class="disclaimer-content">
+                <div class="disclaimer-section warning">
+                    <h3>🚨 USE AT YOUR OWN RISK</h3>
+                    <p>This software is provided <strong>"AS IS"</strong> without warranty of any kind, express or implied. By using this application, you acknowledge and accept the following:</p>
+                </div>
+                
+                <div class="disclaimer-section">
+                    <h3>📋 Terms of Use</h3>
+                    <ul>
+                        <li><strong>No Warranty:</strong> The developer makes no guarantees about the accuracy, reliability, or suitability of this software for any purpose.</li>
+                        <li><strong>No Liability:</strong> The developer shall not be held liable for any direct, indirect, incidental, special, or consequential damages arising from the use of this software.</li>
+                        <li><strong>Data Loss Risk:</strong> This application deletes folders from your Dropbox account. While safety measures are in place, data loss may still occur.</li>
+                        <li><strong>User Responsibility:</strong> You are solely responsible for backing up your data and verifying the results before deletion.</li>
+                        <li><strong>Recovery Limitations:</strong> Deleted folders can only be recovered from Dropbox trash for 30 days. After that, deletion is permanent.</li>
+                    </ul>
+                </div>
+                
+                <div class="disclaimer-section">
+                    <h3>✅ Safety Measures Implemented</h3>
+                    <p>To minimize risk, this application includes:</p>
+                    <ul>
+                        <li>Dry-run mode by default (scan without deleting)</li>
+                        <li>Explicit confirmation required before any deletion</li>
+                        <li>Deleted folders go to Dropbox trash (30-day recovery)</li>
+                        <li>Deepest folders deleted first to prevent errors</li>
+                        <li>Comprehensive logging of all operations</li>
+                        <li>Export results before deletion for your records</li>
+                    </ul>
+                </div>
+                
+                <div class="disclaimer-section">
+                    <h3>💡 Recommendations</h3>
+                    <ul>
+                        <li><strong>Always scan first</strong> - Review the empty folder list before deleting</li>
+                        <li><strong>Export results</strong> - Download JSON/CSV before deleting</li>
+                        <li><strong>Test on small folders</strong> - Try a small folder first to understand behavior</li>
+                        <li><strong>Ensure sync is complete</strong> - Wait for Dropbox to show "Up to date"</li>
+                        <li><strong>Back up important data</strong> - Maintain separate backups of critical files</li>
+                    </ul>
+                </div>
+                
+                <div class="disclaimer-section legal">
+                    <h3>📜 Legal</h3>
+                    <p>This software is licensed under the MIT License. By using this software, you agree to hold harmless the developer, contributors, and any affiliated parties from any claims, damages, or other liability.</p>
+                    <p><strong>This is not affiliated with or endorsed by Dropbox, Inc.</strong></p>
+                </div>
+            </div>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="acceptDisclaimer()">I Understand and Accept</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div class="modal-overlay" id="helpModal">
+        <div class="modal help-modal">
+            <div class="modal-icon">📖</div>
+            <h2>Help & Documentation</h2>
+            
+            <h3>🎯 Purpose</h3>
+            <p>This tool helps you find and remove empty folders from your Dropbox account. Over time, empty folders accumulate from deleted files, failed syncs, reorganization, and application artifacts. Cleaning these up keeps your Dropbox organized and can improve sync performance.</p>
+            
+            <h3>🚀 First-Time Setup</h3>
+            <div class="help-section">
+                <p>If you haven't connected to Dropbox yet:</p>
+                <ol>
+                    <li>Go to <a href="https://www.dropbox.com/developers/apps" target="_blank" style="color: var(--accent-cyan);">Dropbox App Console</a> and create a new app</li>
+                    <li>Select <strong>"Scoped access"</strong> → <strong>"Full Dropbox"</strong></li>
+                    <li>In the app's <strong>Permissions</strong> tab, enable:
+                        <br>• <code style="background: rgba(0,212,255,0.1); padding: 2px 6px; border-radius: 4px;">files.metadata.read</code>
+                        <br>• <code style="background: rgba(0,212,255,0.1); padding: 2px 6px; border-radius: 4px;">files.content.write</code></li>
+                    <li>Click <strong>⚙️ Settings</strong> in this app</li>
+                    <li>Enter your <strong>App Key</strong> and <strong>App Secret</strong></li>
+                    <li>Click <strong>"Get New Token"</strong> and follow the authorization flow</li>
+                    <li>Click <strong>"Save Settings"</strong></li>
+                </ol>
+            </div>
+            
+            <h3>📋 How to Use</h3>
+            <div class="help-section">
+                <ol>
+                    <li><strong>Select a folder</strong> from the dropdown
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Choose "/" to scan your entire Dropbox</span>
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Or select a specific folder to scan only that area</span></li>
+                    <li><strong>Configure options</strong> (optional)
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Toggle "Ignore system files" to treat .DS_Store folders as empty</span></li>
+                    <li><strong>Click "Scan for Empty Folders"</strong>
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Watch real-time progress: folders scanned, files found, elapsed time</span></li>
+                    <li><strong>Review the results</strong>
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• All empty folders are listed, sorted by depth (deepest first)</span>
+                        <br><span style="color: var(--text-secondary); font-size: 0.9em;">• Export to JSON/CSV if you want a record</span></li>
+                    <li><strong>Click "Delete Empty Folders"</strong> if you want to remove them</li>
+                    <li><strong>Confirm deletion</strong> in the popup dialog</li>
+                </ol>
+            </div>
+            
+            <h3>✨ Features</h3>
+            <ul>
+                <li><strong>Smart Detection</strong> - Finds truly empty folders (no files, no non-empty subfolders)</li>
+                <li><strong>System File Ignore</strong> - Treats folders with only .DS_Store, Thumbs.db, desktop.ini as empty</li>
+                <li><strong>Exclusion Patterns</strong> - Skip folders like .git, node_modules automatically</li>
+                <li><strong>Safe Deletion Order</strong> - Deletes deepest folders first, then works backward to parents</li>
+                <li><strong>Real-time Progress</strong> - Live folder/file counts, elapsed time, items/second rate</li>
+                <li><strong>Visual Progress Bar</strong> - Red/orange while running, solid green when complete</li>
+                <li><strong>Export Results</strong> - Export empty folder list to JSON or CSV for records</li>
+                <li><strong>Statistics Panel</strong> - View total scanned, system files ignored, deepest level</li>
+                <li><strong>Trash Recovery</strong> - Deleted folders go to Dropbox trash (recoverable for 30 days)</li>
+                <li><strong>Multi-User Support</strong> - Configure your own Dropbox credentials in Settings</li>
+                <li><strong>Persistent Settings</strong> - All settings saved to config.json</li>
+                <li><strong>Comprehensive Logging</strong> - Detailed logs saved to logs/ directory</li>
+            </ul>
+            
+            <h3>⚙️ Settings</h3>
+            <div class="help-section">
+                <p>Click the <strong>⚙️ Settings</strong> button to configure:</p>
+                <ul>
+                    <li><strong>Dropbox Connection</strong> - App Key, App Secret, Refresh Token</li>
+                    <li><strong>System Files</strong> - Which files to ignore (.DS_Store, Thumbs.db, etc.)</li>
+                    <li><strong>Exclusion Patterns</strong> - Folders to skip (.git, node_modules, etc.)</li>
+                    <li><strong>Export Format</strong> - Default format for exports (JSON or CSV)</li>
+                </ul>
+            </div>
+            
+            <h3>⚠️ Limitations</h3>
+            <div class="help-warning">
+                <strong>Important - Please Read:</strong>
+                <ul>
+                    <li><strong>Deletion is not immediately permanent</strong> - Folders go to Dropbox trash first</li>
+                    <li><strong>30-day recovery window</strong> - After that, deletion cannot be undone</li>
+                    <li><strong>Does not check file contents</strong> - Only checks if files exist in folders</li>
+                    <li><strong>Team folders may not work</strong> - Designed for personal Dropbox accounts</li>
+                    <li><strong>Large accounts take time</strong> - Scanning 100,000+ items may take several minutes</li>
+                    <li><strong>Rate limits apply</strong> - Very large operations may be rate-limited by Dropbox</li>
+                </ul>
+            </div>
+            
+            <h3>💡 Tips & Best Practices</h3>
+            <div class="help-tip">
+                <ul>
+                    <li><strong>Test first</strong> - Start with a small folder to understand how it works</li>
+                    <li><strong>Sync first</strong> - Ensure Dropbox is fully synced ("Up to date") before scanning</li>
+                    <li><strong>Review carefully</strong> - Check the list before deleting, especially the first time</li>
+                    <li><strong>Export for records</strong> - Use JSON/CSV export before deleting for a backup list</li>
+                    <li><strong>Rate limit handling</strong> - If you see errors, wait 5-10 minutes and retry</li>
+                    <li><strong>Check logs</strong> - Look in the logs/ folder for detailed diagnostic information</li>
+                </ul>
+            </div>
+            
+            <h3>🔐 Security & Privacy</h3>
+            <div class="help-section">
+                <ul>
+                    <li><strong>Local credentials</strong> - Your App Key, Secret, and Token are stored only in your local .env file</li>
+                    <li><strong>No third parties</strong> - This tool communicates directly with Dropbox API only</li>
+                    <li><strong>No data collection</strong> - No analytics, no tracking, no external servers</li>
+                    <li><strong>Open source</strong> - Full code available for review on GitHub</li>
+                    <li><strong>Refresh tokens</strong> - Long-term access without storing your password</li>
+                </ul>
+            </div>
+            
+            <h3>🛠️ Troubleshooting</h3>
+            <div class="help-section">
+                <ul>
+                    <li><strong>"Not connected"</strong> - Click Settings → enter credentials → Get New Token</li>
+                    <li><strong>"Authentication failed"</strong> - Your token may have expired, get a new one</li>
+                    <li><strong>"Folder not found"</strong> - Check the path exists in your Dropbox</li>
+                    <li><strong>"Rate limit exceeded"</strong> - Wait 5-10 minutes before retrying</li>
+                    <li><strong>Scan taking too long</strong> - Try scanning a smaller folder first</li>
+                    <li><strong>No empty folders found</strong> - Your selection may already be clean!</li>
+                </ul>
+            </div>
+            
+            <h3>📄 Version Information</h3>
+            <p style="font-family: 'JetBrains Mono', monospace; font-size: 0.8em;">
+                Version: 1.2.0<br>
+                GitHub: <a href="https://github.com/shah0006/dropbox-empty-folder-cleaner" target="_blank" style="color: var(--accent-cyan);">shah0006/dropbox-empty-folder-cleaner</a>
+            </p>
+            
+            <div class="btn-group" style="margin-top: 20px;">
+                <button class="btn btn-primary" onclick="closeHelp()">Got it!</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
