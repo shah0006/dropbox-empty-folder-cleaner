@@ -6,6 +6,19 @@ A powerful suite for file hygiene and bidirectional synchronization. Features a 
 ![Python](https://img.shields.io/badge/python-3.9+-green)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 
+## 📑 Table of Contents
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [New in v2.0](#-new-in-v20)
+- [Features](#-features)
+- [Detailed Usage Guide](#-detailed-usage-guide)
+- [Configuration](#-configuration)
+- [Testing](#-testing)
+- [Limitations & Safety](#-important-limitations)
+- [License](#-license)
+
+---
+
 ## 📁 Project Structure
 
 | File | Description |
@@ -14,6 +27,7 @@ A powerful suite for file hygiene and bidirectional synchronization. Features a 
 | `core/` | **Sync Engine**: Database, Transfer logic, Safety checks |
 | `providers/` | **VFS Adapters**: Local, Dropbox, Google, S3, SFTP |
 | `dropbox_cleaner_web.py` | Legacy v1 Web GUI (Maintenance Mode) |
+| `tests/` | Unit and Integration tests for v2 Engine |
 
 ---
 
