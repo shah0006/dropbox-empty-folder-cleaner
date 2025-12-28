@@ -1,49 +1,50 @@
-# 📁 Dropbox Empty Folder Cleaner
+# 📁 Intelligent Replication Suite (formerly Dropbox Cleaner)
 
-A powerful, user-friendly tool to find and safely delete empty folders in your Dropbox account. Features a modern web-based GUI with real-time progress tracking, configurable settings, and comprehensive safety measures.
+A powerful suite for file hygiene and bidirectional synchronization. Features a modern web-based GUI, multi-cloud support (Dropbox, Google Drive, S3, SFTP), and a robust Sync Engine with Ransomware protection.
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue)
+![Version](https://img.shields.io/badge/version-2.0.0--rc1-blue)
 ![Python](https://img.shields.io/badge/python-3.9+-green)
-![Logging](https://img.shields.io/badge/logging-robust-brightgreen)
+![Docker](https://img.shields.io/badge/docker-ready-blue)
 
 ## 📁 Project Structure
 
 | File | Description |
 | :--- | :--- |
-| `dropbox_cleaner_web.py` | **Primary Tool**: Modern Web-based GUI (Recommended) |
-| `dropbox_cleaner.py` | Functional CLI version for terminal use |
-| `dropbox_auth.py` | OAuth2 authentication helper tool |
-| `logger_setup.py` | Shared robust logging configuration |
-| `compare_folders.py` | Utility to compare two folders (Dropbox or Local) |
-| `deprecated/` | Legacy scripts and one-off utilities |
-| `logs/` | Detailed operation logs and stack traces |
+| `main.py` | **Core Application**: FastAPI backend + Web GUI |
+| `core/` | **Sync Engine**: Database, Transfer logic, Safety checks |
+| `providers/` | **VFS Adapters**: Local, Dropbox, Google, S3, SFTP |
+| `dropbox_cleaner_web.py` | Legacy v1 Web GUI (Maintenance Mode) |
 
 ---
 
 ## 🚀 Getting Started
 
-### 1. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
+### Option A: Docker (Recommended)
+Deploy instantly on any server or NAS (Synology, QNAP):
 
-### 2. Authenticate
-Run the auth helper once to link your Dropbox account:
 ```bash
-python3 dropbox_auth.py
+docker-compose up -d --build
 ```
+Access at **http://localhost:8765**
 
-### 3. Run the App
-**Web GUI (Recommended):**
-```bash
-python3 dropbox_cleaner_web.py
-```
-*Opens in your browser at http://127.0.0.1:8765*
+### Option B: Local Python
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+2. Run the application:
+   ```bash
+   python3 main.py
+   ```
 
-**CLI Version:**
-```bash
-python3 dropbox_cleaner.py --scan "/Folder"
-```
+---
+
+## ✨ New in v2.0
+- **Bi-Directional Sync**: True stateful sync between Local and Cloud.
+- **Multi-Cloud**: Support for S3 Compatible Storage and SFTP.
+- **Safety Monitor**: Heuristic analysis detects and blocks mass deletions (Ransomware protection).
+- **Dockerized**: specific container for 24/7 background operation.
+
 
 ---
 
